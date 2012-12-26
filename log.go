@@ -33,16 +33,30 @@ const (
 	BgWhite   = "\x1b[47m"
 )
 
-func talk(msg string, v interface{}) {
+func talk(v ...interface{}) {
 	if !*verbose {
 		return
 	}
 
-	msg = FgCyan + "↣ " + string(msg) + TR
-	log.Print(msg, v)
+	msg := v[0].(string)
+	msg = FgCyan + "➤ " + string(msg) + TR
+	v[0] = msg
+
+	log.Print(v...)
 }
 
-func Err(msg string, v interface{}) {
+func Err(v ...interface{}) {
+	msg := v[0].(string)
 	msg = FgRed + "⧲ " + string(msg) + TR
-	log.Print(msg, v)
+	v[0] = msg
+
+	log.Print(v...)
+}
+
+func Fatal(v ...interface{}) {
+	msg := v[0].(string)
+	msg = FgRed + "⊗ " + string(msg) + TR
+	v[0] = msg
+
+	log.Fatal(v...)
 }

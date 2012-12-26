@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/howeyc/fsnotify"
-	"log"
 	"os"
 	"os/exec"
 	"time"
@@ -67,6 +66,12 @@ func help() {
 }
 
 func action() {
+	if len(*daemonCmd) > 0 && daemon.Process != nil{
+		talk("Killing daemon")
+		if err := daemon.Process.Kill(); err != nil {
+			Fatal("Failed to kill daemon: ", err)
+		}
+	}
 
 	if len(*buildCmd) > 0 {
 		talk("Running -cmd: ", *buildCmd)
@@ -77,20 +82,20 @@ func action() {
 		err := cmd.Run()
 
 		if err != nil {
-			log.Print(FgRed, "Error executing -cmd: ", err, TR)
+			Err("Error executing -cmd: ", err)
 		}
 	}
 
 	if len(*daemonCmd) > 0 {
 		talk("Running -daemon: ", *daemonCmd)
-		cmd := exec.Command("/bin/bash", "-c", *daemonCmd)
+		daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
 
 		if len(*daemonTrigger) == 0 {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
+			daemon.Stdout = os.Stdout
+			daemon.Stderr = os.Stderr
 		}
 
-		err := cmd.Start()
+		err := daemon.Start()
 
 		if *daemonTimer > 0 {
 			talk("Waiting -timer: ", *daemonTimer)
@@ -102,7 +107,7 @@ func action() {
 		}
 
 		if err != nil {
-			log.Print(FgRed, "Error executing -cmd: ", err, TR)
+			Err("Error executing -daemon: ", err)
 		}
 	}
 
@@ -135,7 +140,7 @@ func openUrl() {
 func main() {
 	if len(os.Args) < 2 {
 		help()
-		log.Fatal("Must specify an action")
+		Fatal("You must specify an action")
 	}
 
 	flag.Parse()
@@ -151,13 +156,13 @@ func main() {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Panic("fsnotify error: ", err)
+		panic(err)
 	}
 	defer watcher.Close()
 
 	err = watcher.Watch(*watchDir)
 	if err != nil {
-		log.Panic("error setting up watcher on -dir ", *watchDir, ": ", err)
+		panic(err)
 	}
 
 	// perform action on start
@@ -170,7 +175,7 @@ func main() {
 			action()
 
 		case err = <-watcher.Error:
-			log.Panic("error with watcher: ", err)
+			panic(err)
 		}
 	}
 
