@@ -13,16 +13,15 @@ import (
 	"time"
 )
 
-
 var (
-	verbose = flag.Bool("v", true, "Verbose")
-	watchDir = flag.String("dir", "", "Directory to watch, defaults to current")
-	buildCmd = flag.String("cmd", "", "Bash command to run on change. Wabo will wait for this command to finish.")
-	daemonCmd = flag.String("daemon", "", "Bash command that starts a daemon. Wago will halt if the daemon exits before the trigger or timer.")
+	verbose       = flag.Bool("v", true, "Verbose")
+	watchDir      = flag.String("dir", "", "Directory to watch, defaults to current")
+	buildCmd      = flag.String("cmd", "", "Bash command to run on change. Wabo will wait for this command to finish.")
+	daemonCmd     = flag.String("daemon", "", "Bash command that starts a daemon. Wago will halt if the daemon exits before the trigger or timer.")
 	daemonTrigger = flag.String("trigger", "", "A string the daemon will output that indicates it has started successfuly. Wago will continue on this trigger.")
-	daemonTimer = flag.Int("timer", 0, "Miliseconds to wait after starting daemon before continuing.")
-	webServer = flag.String("web", "", "Start a web server at this address, e.g. :8080")
-	url = flag.String("url", "", "URL to open in Chrome")
+	daemonTimer   = flag.Int("timer", 0, "Miliseconds to wait after starting daemon before continuing.")
+	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8080")
+	url           = flag.String("url", "", "URL to open in Chrome")
 
 	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
 )
@@ -30,7 +29,7 @@ var (
 var chrome_applescript = `
   tell application "Google Chrome"
     activate
-    set theUrl to "`+*url+`"
+    set theUrl to "` + *url + `"
     
     if (count every window) = 0 then
       make new window
@@ -63,13 +62,13 @@ var chrome_applescript = `
   end tell
 `
 
-func help(){
+func help() {
 	fmt.Println("WaGo (Wait, Go) build watcher")
 }
 
-func action(){
+func action() {
 
-	if len(*buildCmd) >0 {
+	if len(*buildCmd) > 0 {
 		talk("Running -cmd: ", *buildCmd)
 		cmd := exec.Command("/bin/bash", "-c", *buildCmd)
 		cmd.Stdout = os.Stdout
@@ -81,11 +80,10 @@ func action(){
 			log.Print(FgRed, "Error executing -cmd: ", err, TR)
 		}
 	}
-	
-	if len(*daemonCmd) >0 {
+
+	if len(*daemonCmd) > 0 {
 		talk("Running -daemon: ", *daemonCmd)
 		cmd := exec.Command("/bin/bash", "-c", *daemonCmd)
-
 
 		if len(*daemonTrigger) == 0 {
 			cmd.Stdout = os.Stdout
@@ -98,7 +96,7 @@ func action(){
 			talk("Waiting -timer: ", *daemonTimer)
 
 			go func() {
-				time.Sleep( time.Duration(*daemonTimer) * time.Millisecond)
+				time.Sleep(time.Duration(*daemonTimer) * time.Millisecond)
 				openUrl()
 			}()
 		}
@@ -110,7 +108,7 @@ func action(){
 
 }
 
-func openUrl(){
+func openUrl() {
 	if *url == "" {
 		return
 	}
@@ -130,7 +128,7 @@ func openUrl(){
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		Err("AppleScript Error: ", string(output));
+		Err("AppleScript Error: ", string(output))
 	}
 }
 
