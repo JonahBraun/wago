@@ -39,7 +39,23 @@ func talk(v ...interface{}) {
 	}
 
 	msg := v[0].(string)
-	msg = FgCyan + "➤ " + string(msg) + TR
+	msg = FgCyan + "🍃 " + string(msg) + TR
+	v[0] = msg
+
+	log.Print(v...)
+}
+
+func Note(v ...interface{}) {
+	msg := v[0].(string)
+	msg = FgGreen + "✏ " + string(msg) + TR
+	v[0] = msg
+
+	log.Print(v...)
+}
+
+func Warn(v ...interface{}) {
+	msg := v[0].(string)
+	msg = FgYellow + "📢 " + string(msg) + TR
 	v[0] = msg
 
 	log.Print(v...)
@@ -47,7 +63,7 @@ func talk(v ...interface{}) {
 
 func Err(v ...interface{}) {
 	msg := v[0].(string)
-	msg = FgRed + "⧲ " + string(msg) + TR
+	msg = FgRed + "❗ " + string(msg) + TR
 	v[0] = msg
 
 	log.Print(v...)
@@ -55,7 +71,7 @@ func Err(v ...interface{}) {
 
 func Fatal(v ...interface{}) {
 	msg := v[0].(string)
-	msg = FgRed + "⊗ " + string(msg) + TR
+	msg = FgRed + Bright + "‼ " + string(msg) + TR
 	v[0] = msg
 
 	log.Fatal(v...)
