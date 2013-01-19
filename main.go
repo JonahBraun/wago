@@ -34,7 +34,7 @@ func help() {
 }
 
 func runCmd(cmds *string) bool {
-	talk("Running command: ", *cmds)
+	Talk("Running command: ", *cmds)
 	cmd := exec.Command("/bin/bash", "-c", *cmds)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -53,7 +53,7 @@ func runCmd(cmds *string) bool {
 func event() {
 	// kill daemon if it's running
 	if len(*daemonCmd) > 0 && daemon.Process != nil {
-		talk("Killing daemon, pid: ", daemon.Process)
+		Talk("Killing daemon, pid: ", daemon.Process)
 		if err := daemon.Process.Kill(); err != nil {
 			Fatal("Failed to kill daemon: ", err)
 		}
@@ -95,7 +95,7 @@ func event() {
 }
 
 func startDaemon() bool {
-	talk("Starting daemon: ", *daemonCmd)
+	Talk("Starting daemon: ", *daemonCmd)
 	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
 
 	daemon.Stdin = os.Stdin
@@ -111,7 +111,7 @@ func startDaemon() bool {
 	}
 
 	if *daemonTimer > 0 {
-		talk("Waiting for: ", *daemonTimer)
+		Talk("Waiting for: ", *daemonTimer)
 
 		go func() {
 			time.Sleep(time.Duration(*daemonTimer) * time.Millisecond)
@@ -131,7 +131,7 @@ func startDaemon() bool {
 }
 
 func startDaemonWatch() bool {
-	talk("Starting daemon: ", *daemonCmd)
+	Talk("Starting daemon: ", *daemonCmd)
 	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
 
 	daemon.Stdin = os.Stdin
@@ -177,14 +177,14 @@ func startDaemonWatch() bool {
 				if b[0] == key[spot] {
 					spot++
 					if spot == len(key) {
-						talk("Trigger matched!")
+						Talk("Trigger matched!")
 						trigger <- true
 						stop = true
 					}
 				}
 			}
 			if err != nil {
-				talk(err)
+				Talk(err)
 				return
 			}
 		}
@@ -219,7 +219,7 @@ func main() {
 		}
 		watchDir = &cwd
 	}
-	talk("Watching dir: ", *watchDir)
+	Talk("Watching dir: ", *watchDir)
 
 	r, err := regexp.Compile(*watchRegex)
 	if err != nil {
@@ -244,10 +244,10 @@ func main() {
 		select {
 		case ev := <-watcher.Event:
 			if r.MatchString(ev.String()) {
-				talk("Matched event: ", ev.String())
+				Talk("Matched event: ", ev.String())
 				event()
 			} else {
-				talk("Ignored event: ", ev.String())
+				Talk("Ignored event: ", ev.String())
 			}
 
 		case err = <-watcher.Error:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -33,46 +34,32 @@ const (
 	BgWhite   = "\x1b[47m"
 )
 
-func talk(v ...interface{}) {
+func Talk(v ...interface{}) {
 	if !*verbose {
 		return
 	}
 
-	msg := v[0].(string)
-	msg = FgCyan + "🍃 " + string(msg) + TR
-	v[0] = msg
-
-	log.Print(v...)
+	Log(FgCyan, "🍃 ", v...)
 }
 
 func Note(v ...interface{}) {
-	msg := v[0].(string)
-	msg = FgGreen + "✏ " + string(msg) + TR
-	v[0] = msg
-
-	log.Print(v...)
+	Log(FgGreen, "✏ ", v...)
 }
 
 func Warn(v ...interface{}) {
-	msg := v[0].(string)
-	msg = FgYellow + "📢 " + string(msg) + TR
-	v[0] = msg
-
-	log.Print(v...)
+	Log(FgYellow, "📢 ", v...)
 }
 
 func Err(v ...interface{}) {
-	msg := v[0].(string)
-	msg = FgRed + "❗ " + string(msg) + TR
-	v[0] = msg
-
-	log.Print(v...)
+	Log(FgRed, "❗ ", v...)
 }
 
 func Fatal(v ...interface{}) {
-	msg := v[0].(string)
-	msg = FgRed + Bright + "‼ " + string(msg) + TR
-	v[0] = msg
+	Log(FgRed+Bright, "‼ ",v...)
+}
 
-	log.Fatal(v...)
+func Log(color string, icon string, v ...interface{}) {
+	v[0] = fmt.Sprintf("%v%v%v%v", color, icon, v[0], TR)
+
+	log.Print(v...)
 }
