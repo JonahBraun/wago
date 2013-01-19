@@ -45,7 +45,7 @@ func openUrl() {
 		return
 	}
 
-	talk("Opening url (macosx/chrome): ", *url)
+	Talk("Opening url (macosx/chrome): ", *url)
 
 	cmd := exec.Command("osascript")
 
