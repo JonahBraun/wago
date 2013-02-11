@@ -1,3 +1,9 @@
+/*
+	A bunch of convenience functions for output.
+	The colors/icons are to easily differentiate from your project output.
+	
+	An experimentation with cli emoji.
+*/
 package main
 
 import (
