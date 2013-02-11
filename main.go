@@ -27,41 +27,30 @@ var (
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event. Use -v to see all events.")
 
 	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
+	cmd = &Cmd{}
 )
 
 func help() {
 	fmt.Println("WaGo (Wait, Go) build watcher")
 }
 
-func runCmd(cmds *string) bool {
-	Talk("Running command: ", *cmds)
-	cmd := exec.Command("/bin/bash", "-c", *cmds)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
-
-	if err != nil {
-		Err("Error: ", err)
-		return false
-	}
-
-	return true
-}
 
 func event() {
-	// kill daemon if it's running
+	if cmd.Cmd != nil && cmd.Process != nil {
+		cmd.Kill()
+	}
+
 	if len(*daemonCmd) > 0 && daemon.Process != nil {
 		Talk("Killing daemon, pid: ", daemon.Process)
 		if err := daemon.Process.Kill(); err != nil {
-			Fatal("Failed to kill daemon: ", err)
+			Err("Failed to kill daemon: ", err)
 		}
 	}
 
 	// run build command
 	if len(*buildCmd) > 0 {
-		ok := runCmd(buildCmd)
+		cmd = NewCmd(*buildCmd)
+		ok := cmd.Run()
 		if !ok {
 			return
 		}
@@ -82,7 +71,8 @@ func event() {
 
 	// run post command
 	if len(*postCmd) > 0 {
-		ok := runCmd(postCmd)
+		cmd = NewCmd(*postCmd)
+		ok := cmd.Run()
 		if !ok {
 			return
 		}
@@ -163,10 +153,10 @@ func startDaemonWatch() bool {
 		for {
 			// check if the trigger has been pulled and shift to copy mode
 			if stop {
-				Note("Stoped")
+				Note("Stopping trigger watch")
 				_, err := io.Copy(out, in)
 				if err != nil {
-					Err(err)
+					Err("Unwatched pipe has errored: ", err)
 				}
 				return
 			}
@@ -184,7 +174,10 @@ func startDaemonWatch() bool {
 				}
 			}
 			if err != nil {
-				Talk(err)
+				if err.Error() != "EOF" {
+					Err("Watched pipe error: ", err)
+				}
+				trigger <- false
 				return
 			}
 		}
@@ -192,6 +185,15 @@ func startDaemonWatch() bool {
 
 	go watchPipe(stdoutPipe, os.Stdout)
 	go watchPipe(stderrPipe, os.Stderr)
+
+	// watch process for exit
+	go func() {
+		err = daemon.Wait()
+		if err != nil {
+			Err(err)
+		}
+		trigger <- false
+	}()
 
 	// wait for the tirgger
 	ok := <-trigger
@@ -238,14 +240,14 @@ func main() {
 	}
 
 	// trigger event on start
-	event()
+	go event()
 
 	for {
 		select {
 		case ev := <-watcher.Event:
 			if r.MatchString(ev.String()) {
 				Talk("Matched event: ", ev.String())
-				event()
+				go event()
 			} else {
 				Talk("Ignored event: ", ev.String())
 			}
