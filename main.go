@@ -7,11 +7,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/howeyc/fsnotify"
-	"io"
 	"os"
-	"os/exec"
 	"regexp"
-	"time"
 )
 
 var (
@@ -26,7 +23,7 @@ var (
 	url           = flag.String("url", "", "URL to open")
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event. Use -v to see all events.")
 
-	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
+	daemon = &Cmd{}
 	cmd = &Cmd{}
 )
 
@@ -40,11 +37,8 @@ func event() {
 		cmd.Kill()
 	}
 
-	if len(*daemonCmd) > 0 && daemon.Process != nil {
-		Talk("Killing daemon, pid: ", daemon.Process)
-		if err := daemon.Process.Kill(); err != nil {
-			Err("Failed to kill daemon: ", err)
-		}
+	if daemon.Cmd != nil && daemon.Process != nil {
+		daemon.Kill()
 	}
 
 	// run build command
@@ -58,12 +52,14 @@ func event() {
 
 	// start the daemon
 	if len(*daemonCmd) > 0 {
+		daemon = NewCmd(*daemonCmd)
+
 		if len(*daemonTrigger) > 0 {
-			if !startDaemonWatch() {
+			if !daemon.RunTrigger(*daemonTrigger) {
 				return
 			}
 		} else {
-			if !startDaemon() {
+			if !daemon.RunTimer(*daemonTimer) {
 				return
 			}
 		}
@@ -82,128 +78,6 @@ func event() {
 	if len(*url) == 0 {
 		openUrl()
 	}
-}
-
-func startDaemon() bool {
-	Talk("Starting daemon: ", *daemonCmd)
-	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
-
-	daemon.Stdin = os.Stdin
-	daemon.Stdout = os.Stdout
-	daemon.Stderr = os.Stderr
-
-	trigger := make(chan bool)
-
-	err := daemon.Start()
-	if err != nil {
-		Err("Error starting daemon: ", err)
-		return false
-	}
-
-	if *daemonTimer > 0 {
-		Talk("Waiting for: ", *daemonTimer)
-
-		go func() {
-			time.Sleep(time.Duration(*daemonTimer) * time.Millisecond)
-			trigger <- true
-		}()
-	}
-
-	// wait for the tirgger
-	ok := <-trigger
-
-	// check if daemon is still running
-	if daemon.ProcessState != nil {
-		return false
-	}
-
-	return ok
-}
-
-func startDaemonWatch() bool {
-	Talk("Starting daemon: ", *daemonCmd)
-	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
-
-	daemon.Stdin = os.Stdin
-
-	trigger := make(chan bool)
-
-	stdoutPipe, err := daemon.StdoutPipe()
-	if err != nil {
-		panic(err)
-	}
-	stderrPipe, err := daemon.StderrPipe()
-	if err != nil {
-		panic(err)
-	}
-
-	err = daemon.Start()
-	if err != nil {
-		Err("Error starting daemon: ", err)
-		return false
-	}
-
-	stop := false
-	key := []byte(*daemonTrigger)
-
-	watchPipe := func(in io.Reader, out io.Writer) {
-		b := make([]byte, 1)
-		spot := 0
-
-		for {
-			// check if the trigger has been pulled and shift to copy mode
-			if stop {
-				Note("Stopping trigger watch")
-				_, err := io.Copy(out, in)
-				if err != nil {
-					Err("Unwatched pipe has errored: ", err)
-				}
-				return
-			}
-
-			n, err := in.Read(b)
-			if n > 0 {
-				out.Write(b[:n])
-				if b[0] == key[spot] {
-					spot++
-					if spot == len(key) {
-						Talk("Trigger matched!")
-						trigger <- true
-						stop = true
-					}
-				}
-			}
-			if err != nil {
-				if err.Error() != "EOF" {
-					Err("Watched pipe error: ", err)
-				}
-				trigger <- false
-				return
-			}
-		}
-	}
-
-	go watchPipe(stdoutPipe, os.Stdout)
-	go watchPipe(stderrPipe, os.Stderr)
-
-	// watch process for exit
-	go func() {
-		err = daemon.Wait()
-		if err != nil {
-			Err(err)
-		}
-		trigger <- false
-	}()
-
-	// wait for the tirgger
-	ok := <-trigger
-
-	// check if daemon is still running
-	if daemon.ProcessState != nil {
-		return false
-	}
-
-	return ok
 }
 
 func main() {
@@ -256,5 +130,4 @@ func main() {
 			panic(err)
 		}
 	}
-
 }

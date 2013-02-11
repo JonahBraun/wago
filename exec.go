@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io"
 	"os"
 	"os/exec"
+	"time"
 )
 
 type Cmd struct{
@@ -41,69 +43,73 @@ func (c *Cmd) Run() bool {
 
 	return true
 }
-/*
-func (c *Cmd) StartTimer(timer *int) bool {
-	Talk("Running command: ", c.Name)
-	Talk("Starting daemon: ", *daemonCmd)
-	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
 
-	daemon.Stdin = os.Stdin
-	daemon.Stdout = os.Stdout
-	daemon.Stderr = os.Stderr
+func (c *Cmd) RunTimer(timer int) bool {
+	Talk("Starting daemon: ", c.Name)
+
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
 
 	trigger := make(chan bool)
 
-	err := daemon.Start()
+	err := c.Start()
 	if err != nil {
 		Err("Error starting daemon: ", err)
 		return false
 	}
 
-	if *daemonTimer > 0 {
-		Talk("Waiting for: ", *daemonTimer)
+	Talk("Waiting miliseconds: ", timer)
 
-		go func() {
-			time.Sleep(time.Duration(*daemonTimer) * time.Millisecond)
-			trigger <- true
-		}()
-	}
+	go func() {
+		time.Sleep(time.Duration(timer) * time.Millisecond)
+		trigger <- true
+	}()
+	
+	// watch process for exit
+	go func() {
+		err = c.Wait()
+		if err != nil {
+			Err(err)
+		}
+		trigger <- false
+	}()
 
-	// wait for the tirgger
+	// wait for the trigger
 	ok := <-trigger
 
 	// check if daemon is still running
-	if daemon.ProcessState != nil {
+	if c.ProcessState != nil {
 		return false
 	}
 
 	return ok
 }
 
-func startDaemonWatch() bool {
-	Talk("Starting daemon: ", *daemonCmd)
-	daemon = exec.Command("/bin/bash", "-c", *daemonCmd)
+func (c *Cmd) RunTrigger(triggerString string) bool {
+	Talk("Starting daemon: ", c.Name)
 
-	daemon.Stdin = os.Stdin
+	c.Stdin = os.Stdin
 
 	trigger := make(chan bool)
 
-	stdoutPipe, err := daemon.StdoutPipe()
+	stdoutPipe, err := c.StdoutPipe()
 	if err != nil {
 		panic(err)
 	}
-	stderrPipe, err := daemon.StderrPipe()
+	stderrPipe, err := c.StderrPipe()
 	if err != nil {
 		panic(err)
 	}
 
-	err = daemon.Start()
+	err = c.Start()
 	if err != nil {
 		Err("Error starting daemon: ", err)
 		return false
 	}
 
 	stop := false
-	key := []byte(*daemonTrigger)
+	key := []byte(triggerString)
 
 	watchPipe := func(in io.Reader, out io.Writer) {
 		b := make([]byte, 1)
@@ -147,21 +153,20 @@ func startDaemonWatch() bool {
 
 	// watch process for exit
 	go func() {
-		err = daemon.Wait()
+		err = c.Wait()
 		if err != nil {
 			Err(err)
 		}
 		trigger <- false
 	}()
 
-	// wait for the tirgger
+	// wait for the trigger
 	ok := <-trigger
 
 	// check if daemon is still running
-	if daemon.ProcessState != nil {
+	if c.ProcessState != nil {
 		return false
 	}
 
 	return ok
 }
-*/
