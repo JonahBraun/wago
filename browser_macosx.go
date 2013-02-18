@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os/exec"
 )
 
 var chrome_applescript = `
   tell application "Google Chrome"
     activate
-    set theUrl to "` + *url + `"
+    set theUrl to "%v"
     
     if (count every window) = 0 then
       make new window
@@ -41,10 +42,6 @@ var chrome_applescript = `
 `
 
 func openUrl() {
-	if *url == "" {
-		return
-	}
-
 	Note("Opening url (macosx/chrome):", *url)
 
 	cmd := exec.Command("osascript")
@@ -54,7 +51,7 @@ func openUrl() {
 		panic(err)
 	}
 
-	in.Write([]byte(chrome_applescript))
+	in.Write([]byte(fmt.Sprintf(chrome_applescript, *url)))
 	in.Close()
 
 	output, err := cmd.CombinedOutput()

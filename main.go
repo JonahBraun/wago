@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/howeyc/fsnotify"
+	"net/http"
 	"os"
 	"regexp"
 )
@@ -81,7 +82,7 @@ func event() {
 	}
 
 	// open the url
-	if len(*url) == 0 {
+	if *url != "" {
 		openUrl()
 	}
 }
@@ -117,6 +118,16 @@ func main() {
 	err = watcher.Watch(*watchDir)
 	if err != nil {
 		panic(err)
+	}
+
+	if *webServer != "" {
+		go func(){
+			Note("Starting web server on port", *webServer)
+			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*watchDir)))
+			if err != nil {
+				Fatal("Error starting web server:", err)
+			}
+		}()
 	}
 
 	// trigger event on start
