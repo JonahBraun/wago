@@ -20,6 +20,7 @@ var (
 	verbose       = flag.Bool("v", false, "Verbose")
 	verboseQuiet  = flag.Bool("q", false, "Quiet, only warnings and errors.")
 
+	fiddle = flag.Bool("fiddle", false, "CLI fiddle mode, starts a web server and opens url to watchDir/index.html")
 	watchDir      = flag.String("dir", "", "Directory to watch, defaults to current")
 	buildCmd      = flag.String("cmd", "", "Bash command to run on change. Wabo will wait for this command to finish.")
 	daemonCmd     = flag.String("daemon", "", "Bash command that starts a daemon. Wago will halt if the daemon exits before the trigger or timer.")
@@ -94,6 +95,11 @@ func main() {
 	}
 
 	flag.Parse()
+
+	if *fiddle {
+		*webServer = ":9933"
+		*url = "http://localhost:9933/index.html"
+	}
 
 	if *watchDir == "" {
 		cwd, err := os.Getwd()
