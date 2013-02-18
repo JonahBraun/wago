@@ -8,6 +8,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 )
 
 const (
@@ -61,6 +62,7 @@ func Err(v ...interface{}) {
 
 func Fatal(v ...interface{}) {
 	Log(FgRed+Bright, "‼  ",v...)
+	os.Exit(1)
 }
 
 func Log(color string, icon string, v ...interface{}) {
