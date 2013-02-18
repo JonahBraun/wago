@@ -45,7 +45,7 @@ func openUrl() {
 		return
 	}
 
-	Talk("Opening url (macosx/chrome): ", *url)
+	Note("Opening url (macosx/chrome):", *url)
 
 	cmd := exec.Command("osascript")
 
@@ -60,6 +60,6 @@ func openUrl() {
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		Err("AppleScript Error: ", string(output))
+		Fatal("AppleScript Error:", string(output))
 	}
 }

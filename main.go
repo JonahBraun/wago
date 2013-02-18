@@ -1,5 +1,9 @@
-// Watches the current directory for changes, and runs the command you supply as arguments
-// in response to changes
+/*
+	Watches the current directory for changes, and runs the command you supply as arguments
+	in response to changes.
+
+	This is my first go project, suggestions welcome!
+*/
 
 package main
 
@@ -12,7 +16,9 @@ import (
 )
 
 var (
-	verbose       = flag.Bool("v", true, "Verbose")
+	verbose       = flag.Bool("v", false, "Verbose")
+	verboseQuiet  = flag.Bool("q", false, "Quiet, only warnings and errors.")
+
 	watchDir      = flag.String("dir", "", "Directory to watch, defaults to current")
 	buildCmd      = flag.String("cmd", "", "Bash command to run on change. Wabo will wait for this command to finish.")
 	daemonCmd     = flag.String("daemon", "", "Bash command that starts a daemon. Wago will halt if the daemon exits before the trigger or timer.")
@@ -23,7 +29,7 @@ var (
 	url           = flag.String("url", "", "URL to open")
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event. Use -v to see all events.")
 
-	daemon = &Cmd{}
+	daemon = &Daemon{}
 	cmd = &Cmd{}
 )
 
@@ -33,11 +39,11 @@ func help() {
 
 
 func event() {
-	if cmd.Cmd != nil && cmd.Process != nil {
+	if cmd.Cmd != nil && cmd.ProcessState == nil {
 		cmd.Kill()
 	}
 
-	if daemon.Cmd != nil && daemon.Process != nil {
+	if daemon.Cmd != nil && daemon.ProcessState == nil {
 		daemon.Kill()
 	}
 
@@ -52,7 +58,7 @@ func event() {
 
 	// start the daemon
 	if len(*daemonCmd) > 0 {
-		daemon = NewCmd(*daemonCmd)
+		daemon = NewDaemon(*daemonCmd)
 
 		if len(*daemonTrigger) > 0 {
 			if !daemon.RunTrigger(*daemonTrigger) {
@@ -95,11 +101,11 @@ func main() {
 		}
 		watchDir = &cwd
 	}
-	Talk("Watching dir: ", *watchDir)
+	Talk("Watching dir:", *watchDir)
 
 	r, err := regexp.Compile(*watchRegex)
 	if err != nil {
-		Fatal("Watch regex compile error: ", err)
+		Fatal("Watch regex compile error:", err)
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -120,10 +126,10 @@ func main() {
 		select {
 		case ev := <-watcher.Event:
 			if r.MatchString(ev.String()) {
-				Talk("Matched event: ", ev.String())
+				Note("Matched event:", ev.String())
 				go event()
 			} else {
-				Talk("Ignored event: ", ev.String())
+				Talk("Ignored event:", ev.String())
 			}
 
 		case err = <-watcher.Error:

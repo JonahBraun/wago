@@ -18,16 +18,16 @@ func NewCmd(name string) *Cmd {
 }
 
 func (c *Cmd) Kill() {
-	Talk("Killing command ("+c.Name+"), pid: ", c.Process)
+	Note("Killing command ("+c.Name+"), pid:", c.Process)
 	c.killed = true
 
 	if err := c.Process.Kill(); err != nil {
-		Err("Failed to kill command ("+c.Name+"): ", err)
+		Err("Failed to kill command ("+c.Name+"):", err)
 	}
 }
 
 func (c *Cmd) Run() bool {
-	Talk("Running command: ", c.Name)
+	Note("Running command:", c.Name)
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
@@ -36,7 +36,7 @@ func (c *Cmd) Run() bool {
 
 	if err != nil {
 		if !c.killed {
-			Err("Error running command: ", err)
+			Err("Error running command:", err)
 		}
 		return false
 	}
@@ -44,8 +44,16 @@ func (c *Cmd) Run() bool {
 	return true
 }
 
-func (c *Cmd) RunTimer(timer int) bool {
-	Talk("Starting daemon: ", c.Name)
+type Daemon struct{
+	*Cmd
+}
+
+func NewDaemon(name string) *Daemon {
+	return &Daemon{&Cmd{exec.Command("/bin/bash", "-c", name), name, false}}
+}
+
+func (c *Daemon) RunTimer(timer int) bool {
+	Note("Starting daemon:", c.Name)
 
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
@@ -55,11 +63,11 @@ func (c *Cmd) RunTimer(timer int) bool {
 
 	err := c.Start()
 	if err != nil {
-		Err("Error starting daemon: ", err)
+		Err("Error starting daemon:", err)
 		return false
 	}
 
-	Talk("Waiting miliseconds: ", timer)
+	Talk("Waiting miliseconds:", timer)
 
 	go func() {
 		time.Sleep(time.Duration(timer) * time.Millisecond)
@@ -69,8 +77,12 @@ func (c *Cmd) RunTimer(timer int) bool {
 	// watch process for exit
 	go func() {
 		err = c.Wait()
-		if err != nil {
-			Err(err)
+		if !c.killed {
+			if err != nil{
+				Err(err)
+			} else {
+				Warn("Daemon exited cleanly")
+			}
 		}
 		trigger <- false
 	}()
@@ -86,8 +98,8 @@ func (c *Cmd) RunTimer(timer int) bool {
 	return ok
 }
 
-func (c *Cmd) RunTrigger(triggerString string) bool {
-	Talk("Starting daemon: ", c.Name)
+func (c *Daemon) RunTrigger(triggerString string) bool {
+	Note("Starting daemon:", c.Name)
 
 	c.Stdin = os.Stdin
 
@@ -104,7 +116,7 @@ func (c *Cmd) RunTrigger(triggerString string) bool {
 
 	err = c.Start()
 	if err != nil {
-		Err("Error starting daemon: ", err)
+		Err("Error starting daemon:", err)
 		return false
 	}
 
@@ -118,10 +130,9 @@ func (c *Cmd) RunTrigger(triggerString string) bool {
 		for {
 			// check if the trigger has been pulled and shift to copy mode
 			if stop {
-				Note("Stopping trigger watch")
 				_, err := io.Copy(out, in)
 				if err != nil {
-					Err("Unwatched pipe has errored: ", err)
+					Err("Unwatched pipe has errored:", err)
 				}
 				return
 			}
@@ -132,7 +143,7 @@ func (c *Cmd) RunTrigger(triggerString string) bool {
 				if b[0] == key[spot] {
 					spot++
 					if spot == len(key) {
-						Talk("Trigger matched!")
+						Talk("Trigger match")
 						trigger <- true
 						stop = true
 					}
@@ -140,7 +151,7 @@ func (c *Cmd) RunTrigger(triggerString string) bool {
 			}
 			if err != nil {
 				if err.Error() != "EOF" {
-					Err("Watched pipe error: ", err)
+					Err("Watched pipe error:", err)
 				}
 				trigger <- false
 				return
@@ -154,8 +165,12 @@ func (c *Cmd) RunTrigger(triggerString string) bool {
 	// watch process for exit
 	go func() {
 		err = c.Wait()
-		if err != nil {
-			Err(err)
+		if !c.killed {
+			if err != nil{
+				Err(err)
+			} else {
+				Warn("Daemon exited cleanly")
+			}
 		}
 		trigger <- false
 	}()

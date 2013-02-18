@@ -8,7 +8,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 )
 
 const (
@@ -41,31 +40,31 @@ const (
 )
 
 func Talk(v ...interface{}) {
-	if !*verbose {
-		return
+	if *verbose {
+		Log(FgCyan, "🍃  ", v...)
 	}
-
-	Log(FgCyan, "🍃 ", v...)
 }
 
 func Note(v ...interface{}) {
-	Log(FgGreen, "✏ ", v...)
+	if !*verboseQuiet {
+		Log(FgGreen, "✏  ", v...)
+	}
 }
 
 func Warn(v ...interface{}) {
-	Log(FgYellow, "📢 ", v...)
+	Log(FgYellow, "📢  ", v...)
 }
 
 func Err(v ...interface{}) {
-	Log(FgRed, "❗ ", v...)
+	Log(FgRed, "❗  ", v...)
 }
 
 func Fatal(v ...interface{}) {
-	Log(FgRed+Bright, "‼ ",v...)
+	Log(FgRed+Bright, "‼  ",v...)
 }
 
 func Log(color string, icon string, v ...interface{}) {
 	v[0] = fmt.Sprintf("%v%v%v%v", color, icon, v[0], TR)
 
-	log.Print(v...)
+	fmt.Println(v...)
 }
