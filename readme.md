@@ -16,6 +16,8 @@ When an event occurs, a pipeline of actions is started. All actions are optional
 1. Run a command
 1. Open a url in a browser (currently limited to Mac OS X and Chrome)
 
+If a new event occurs when the pipeline is running, any running processes are killed and the pipeline started again.
+
 Wago features a "CLI fiddle" mode that watches the current directory, starts a web server, and opens Chrome to index.html (or a directory listing if index.html is not present in the directory).
 
 Bash is used to execute all commands. I/O is connected properly, so you can use Wago with interactive commands.
