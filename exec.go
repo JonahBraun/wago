@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-type Cmd struct{
+type Cmd struct {
 	*exec.Cmd
-	Name string
+	Name   string
 	killed bool
 }
 
@@ -44,7 +44,7 @@ func (c *Cmd) Run() bool {
 	return true
 }
 
-type Daemon struct{
+type Daemon struct {
 	*Cmd
 }
 
@@ -73,12 +73,12 @@ func (c *Daemon) RunTimer(timer int) bool {
 		time.Sleep(time.Duration(timer) * time.Millisecond)
 		trigger <- true
 	}()
-	
+
 	// watch process for exit
 	go func() {
 		err = c.Wait()
 		if !c.killed {
-			if err != nil{
+			if err != nil {
 				Err(err)
 			} else {
 				Warn("Daemon exited cleanly")
@@ -166,7 +166,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 	go func() {
 		err = c.Wait()
 		if !c.killed {
-			if err != nil{
+			if err != nil {
 				Err(err)
 			} else {
 				Warn("Daemon exited cleanly")

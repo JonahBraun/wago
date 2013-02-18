@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	verbose       = flag.Bool("v", false, "Verbose")
-	verboseQuiet  = flag.Bool("q", false, "Quiet, only warnings and errors")
+	verbose      = flag.Bool("v", false, "Verbose")
+	verboseQuiet = flag.Bool("q", false, "Quiet, only warnings and errors")
 
-	fiddle = flag.Bool("fiddle", false, "CLI fiddle mode, starts a web server and opens url to watchDir/index.html")
+	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode, starts a web server and opens url to watchDir/index.html")
 	watchDir      = flag.String("dir", "", "Directory to watch, defaults to current")
 	buildCmd      = flag.String("cmd", "", "Bash command to run on change, Wabo will wait for this command to finish")
 	daemonCmd     = flag.String("daemon", "", "Bash command that starts a daemon, Wago will halt if the daemon exits before the trigger or timer")
@@ -32,9 +32,8 @@ var (
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event, use -v to see all events")
 
 	daemon = &Daemon{}
-	cmd = &Cmd{}
+	cmd    = &Cmd{}
 )
-
 
 func event() {
 	if cmd.Cmd != nil && cmd.ProcessState == nil {
@@ -132,7 +131,7 @@ func main() {
 	}
 
 	if *webServer != "" {
-		go func(){
+		go func() {
 			Note("Starting web server on port", *webServer)
 			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*watchDir)))
 			if err != nil {

@@ -1,7 +1,7 @@
 /*
 	A bunch of convenience functions for output.
 	The colors/icons are to easily differentiate from your project output.
-	
+
 	An experimentation with cli emoji.
 */
 package main
@@ -61,7 +61,7 @@ func Err(v ...interface{}) {
 }
 
 func Fatal(v ...interface{}) {
-	Log(FgRed+Bright, "‼  ",v...)
+	Log(FgRed+Bright, "‼  ", v...)
 	os.Exit(1)
 }
 
