@@ -1,21 +1,29 @@
 #!/bin/bash
 
 simulate_change() {
-	sleep 10
-	for i in {1..1}; do
-		echo "touching"
-		touch tmp.$(date +%s)
-		sleep 4
-	done
+	sleep 3
+	touch tmp.1 && touch tmp.2 && touch tmp.3 && touch tmp.4 && touch tmp.5
+	rm tmp.*
+
+	sleep 5
+	touch tmp.1 && touch tmp.2 && touch tmp.3 && touch tmp.4 && touch tmp.5
+	rm tmp.*
+
+	sleep 7
+	touch tmp.1 && touch tmp.2 && touch tmp.3 && touch tmp.4 && touch tmp.5
+	rm tmp.*
+
+	sleep 15
+	touch tmp.1 && touch tmp.2 && touch tmp.3 && touch tmp.4 && touch tmp.5
 	rm tmp.*
 }
 
 simulate_change &
 
-go install && wago \
-	-cmd='sleep 1s && echo "BUILDCMD"' \
+go install && wago -v\
+	-cmd='echo "BUILDCMD 1s" && sleep 1' \
 	-daemon='./test_daemon.bash' \
-	-trigger='Quick' \
+	-trigger='quick' \
 	-pcmd='echo POSTCMD' \
 	-web=':4567' \
 	-url='http://localhost:4567/main.go' \ 
