@@ -7,6 +7,7 @@
 package main
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"fmt"
 	"os"
 )
@@ -69,4 +70,8 @@ func Log(color string, icon string, v ...interface{}) {
 	v[0] = fmt.Sprintf("%v%v%v%v", color, icon, v[0], TR)
 
 	fmt.Println(v...)
+}
+
+func Dump(v interface{}){
+	spew.Dump(v)
 }

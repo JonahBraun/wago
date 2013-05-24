@@ -7,17 +7,103 @@ import (
 	"time"
 )
 
+
+type Machine struct {
+	trans chan string
+	chain []Action
+	step int
+}
+
+func NewMachine() Machine{
+	m := Machine{
+		trans: make(chan string),
+		chain: make([]Action, 0),
+		step: 0,
+	}
+
+	if len(*buildCmd) > 0 {
+		m.chain = append(m.chain, NewRunWait(*buildCmd))
+	}
+
+	if len(*daemonCmd) > 0 {
+		m.chain = append(m.chain, NewDaemon(*daemonCmd))
+	}
+
+	if len(*postCmd) > 0 {
+		m.chain = append(m.chain, NewRunWait(*postCmd))
+	}
+
+	if *url != "" {
+		m.chain = append(m.chain, NewBrowser(*url))
+	}
+
+	return m
+}
+
+// TODO just send to the channel everywhere instead of calling this func
+func (m *Machine) Trans(e string) {
+	m.trans <- e
+}
+
+func (m *Machine) action(){
+	m.chain[m.step].Run()
+}
+
+func (m *Machine) RunHandler() {
+	for {
+		t := <-m.trans
+
+		switch t {
+		case "begin":
+			Talk("Killing all processes")
+			for i := range m.chain {
+				m.chain[i].Kill()
+			}
+
+			Talk("Begin action chain")
+			m.step = 0
+			m.action()
+
+		case "next":
+			if m.step == len(m.chain)-1 {
+				Talk("Done!")
+				break
+			}
+			m.step++
+			m.action()
+
+		}
+	}
+}
+
+
+type Action interface {
+	// returns true if the command was started ok
+	Run() bool
+	Kill()
+}
+
+
 type Cmd struct {
+	Name string
 	*exec.Cmd
-	Name   string
 	killed bool
 }
 
 func NewCmd(name string) *Cmd {
-	return &Cmd{exec.Command("/bin/bash", "-c", name), name, false}
+	return &Cmd{
+		Name: name,
+		Cmd: exec.Command("/bin/bash", "-c", name),
+		killed: false,
+	}
 }
 
 func (c *Cmd) Kill() {
+	// return if the cmd has not been run or the command has finished (ProcessState is set)
+	if c == nil || c.ProcessState != nil {
+		return
+	}
+
 	Note("Killing command ("+c.Name+"), pid:", c.Process)
 	c.killed = true
 
@@ -26,40 +112,75 @@ func (c *Cmd) Kill() {
 	}
 }
 
-func (c *Cmd) Run() bool {
+type RunWait struct{
+	Name string
+	*Cmd
+}
+
+func NewRunWait(name string) *RunWait {
+	return &RunWait{ Name: name }
+}
+
+func (c *RunWait) Run() bool {
 	Note("Running command:", c.Name)
+
+	c.Cmd = NewCmd(c.Name)
+
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
-
-	err := c.Cmd.Run()
-
+	
+	err := c.Start()
 	if err != nil {
-		if !c.killed {
-			Err("Error running command:", err)
-		}
+		Err("Error running command:", err)
 		return false
 	}
+	
+	// watch process for exit
+	go func(cmd *Cmd) {
+		err := cmd.Wait()
+		if cmd.killed {
+			return
+		}
+		if err != nil {
+			Err("Command exit error:", err)
+			return
+		}
+
+		// finished successfully
+		machine.Trans("next")
+	}(c.Cmd)
 
 	return true
 }
 
 type Daemon struct {
+	Name string
 	*Cmd
 }
 
 func NewDaemon(name string) *Daemon {
-	return &Daemon{&Cmd{exec.Command("/bin/bash", "-c", name), name, false}}
+	return &Daemon{Name: name}
 }
 
-func (c *Daemon) RunTimer(timer int) bool {
+func (c *Daemon) Run() bool{
+	c.Cmd = NewCmd(c.Name)
+
+	if len(*daemonTrigger) > 0 {
+		return c.RunTrigger(*daemonTrigger)
+	} else {
+		return c.RunTimer(*daemonTimer)
+	}
+}
+
+
+func (c *Daemon) RunTimer(period int) bool {
 	Note("Starting daemon:", c.Name)
 
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 
-	trigger := make(chan bool)
 
 	err := c.Start()
 	if err != nil {
@@ -67,35 +188,30 @@ func (c *Daemon) RunTimer(timer int) bool {
 		return false
 	}
 
-	Talk("Waiting miliseconds:", timer)
+	Talk("Waiting miliseconds:", period)
 
-	go func() {
-		time.Sleep(time.Duration(timer) * time.Millisecond)
-		trigger <- true
-	}()
+	timer := time.AfterFunc(time.Duration(period)*time.Millisecond, func(){
+		machine.Trans("next")
+	})
 
 	// watch process for exit
-	go func() {
-		err = c.Wait()
-		if !c.killed {
-			if err != nil {
-				Err(err)
-			} else {
-				Warn("Daemon exited cleanly")
-			}
+	go func(cmd *Cmd) {
+		err := cmd.Wait()
+		timer.Stop()
+
+		if cmd.killed {
+			return
 		}
-		trigger <- false
-	}()
+		if err != nil {
+			Err("Command exit error:", err)
+			return
+		}
 
-	// wait for the trigger
-	ok := <-trigger
+		// A daemon probably shouldn't be exiting
+		Warn("Daemon exited cleanly")
+	}(c.Cmd)
 
-	// check if daemon is still running
-	if c.ProcessState != nil {
-		return false
-	}
-
-	return ok
+	return true
 }
 
 func (c *Daemon) RunTrigger(triggerString string) bool {
@@ -134,6 +250,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 				if err != nil {
 					Err("Unwatched pipe has errored:", err)
 				}
+				machine.Trans("next")
 				return
 			}
 
@@ -163,25 +280,20 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 	go watchPipe(stderrPipe, os.Stderr)
 
 	// watch process for exit
-	go func() {
-		err = c.Wait()
-		if !c.killed {
-			if err != nil {
-				Err(err)
-			} else {
-				Warn("Daemon exited cleanly")
-			}
+	go func(cmd *Cmd) {
+		err := cmd.Wait()
+
+		if cmd.killed {
+			return
 		}
-		trigger <- false
-	}()
+		if err != nil {
+			Err("Command exit error:", err)
+			return
+		}
 
-	// wait for the trigger
-	ok := <-trigger
+		// A daemon probably shouldn't be exiting
+		Warn("Daemon exited cleanly")
+	}(c.Cmd)
 
-	// check if daemon is still running
-	if c.ProcessState != nil {
-		return false
-	}
-
-	return ok
+	return true
 }

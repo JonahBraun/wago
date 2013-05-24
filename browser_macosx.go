@@ -41,7 +41,14 @@ var chrome_applescript = `
   end tell
 `
 
-func openUrl() {
+type Browser string
+
+func NewBrowser(url string) *Browser {
+	b := Browser(url)
+	return &b
+}
+
+func (b *Browser) Run() bool {
 	Note("Opening url (macosx/chrome):", *url)
 
 	cmd := exec.Command("osascript")
@@ -59,4 +66,9 @@ func openUrl() {
 	if err != nil {
 		Fatal("AppleScript Error:", string(output))
 	}
+
+	return true
+}
+
+func (b *Browser) Kill() {
 }

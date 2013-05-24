@@ -35,8 +35,10 @@ var (
 
 	daemon = &Daemon{}
 	cmd    = &Cmd{}
+	machine Machine
 )
 
+/*
 func event() {
 	if cmd.Cmd != nil && cmd.ProcessState == nil {
 		cmd.Kill()
@@ -84,6 +86,7 @@ func event() {
 		openUrl()
 	}
 }
+*/
 
 func main() {
 	flag.Usage = func() {
@@ -169,15 +172,16 @@ func main() {
 		}()
 	}
 
-	// trigger event on start
-	go event()
+	machine = NewMachine()
+	go machine.RunHandler()
+	machine.Trans("begin")
 
 	for {
 		select {
 		case ev := <-watcher.Event:
 			if r.MatchString(ev.String()) {
 				Note("Matched event:", ev.String())
-				go event()
+				machine.Trans("begin")
 			} else {
 				Talk("Ignored event:", ev.String())
 			}
