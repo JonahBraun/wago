@@ -7,18 +7,17 @@ import (
 	"time"
 )
 
-
 type Machine struct {
 	trans chan string
 	chain []Action
-	step int
+	step  int
 }
 
-func NewMachine() Machine{
+func NewMachine() Machine {
 	m := Machine{
 		trans: make(chan string),
 		chain: make([]Action, 0),
-		step: 0,
+		step:  0,
 	}
 
 	if len(*buildCmd) > 0 {
@@ -45,7 +44,7 @@ func (m *Machine) Trans(e string) {
 	m.trans <- e
 }
 
-func (m *Machine) action(){
+func (m *Machine) action() {
 	m.chain[m.step].Run()
 }
 
@@ -76,13 +75,11 @@ func (m *Machine) RunHandler() {
 	}
 }
 
-
 type Action interface {
 	// returns true if the command was started ok
 	Run() bool
 	Kill()
 }
-
 
 type Cmd struct {
 	Name string
@@ -92,8 +89,8 @@ type Cmd struct {
 
 func NewCmd(name string) *Cmd {
 	return &Cmd{
-		Name: name,
-		Cmd: exec.Command("/bin/bash", "-c", name),
+		Name:   name,
+		Cmd:    exec.Command("/bin/bash", "-c", name),
 		killed: false,
 	}
 }
@@ -112,13 +109,13 @@ func (c *Cmd) Kill() {
 	}
 }
 
-type RunWait struct{
+type RunWait struct {
 	Name string
 	*Cmd
 }
 
 func NewRunWait(name string) *RunWait {
-	return &RunWait{ Name: name }
+	return &RunWait{Name: name}
 }
 
 func (c *RunWait) Run() bool {
@@ -129,13 +126,13 @@ func (c *RunWait) Run() bool {
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
-	
+
 	err := c.Start()
 	if err != nil {
 		Err("Error running command:", err)
 		return false
 	}
-	
+
 	// watch process for exit
 	go func(cmd *Cmd) {
 		err := cmd.Wait()
@@ -163,7 +160,7 @@ func NewDaemon(name string) *Daemon {
 	return &Daemon{Name: name}
 }
 
-func (c *Daemon) Run() bool{
+func (c *Daemon) Run() bool {
 	c.Cmd = NewCmd(c.Name)
 
 	if len(*daemonTrigger) > 0 {
@@ -173,14 +170,12 @@ func (c *Daemon) Run() bool{
 	}
 }
 
-
 func (c *Daemon) RunTimer(period int) bool {
 	Note("Starting daemon:", c.Name)
 
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
-
 
 	err := c.Start()
 	if err != nil {
@@ -190,7 +185,7 @@ func (c *Daemon) RunTimer(period int) bool {
 
 	Talk("Waiting miliseconds:", period)
 
-	timer := time.AfterFunc(time.Duration(period)*time.Millisecond, func(){
+	timer := time.AfterFunc(time.Duration(period)*time.Millisecond, func() {
 		machine.Trans("next")
 	})
 

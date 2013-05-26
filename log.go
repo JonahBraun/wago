@@ -7,8 +7,8 @@
 package main
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"os"
 )
 
@@ -72,6 +72,6 @@ func Log(color string, icon string, v ...interface{}) {
 	fmt.Println(v...)
 }
 
-func Dump(v interface{}){
+func Dump(v interface{}) {
 	spew.Dump(v)
 }
