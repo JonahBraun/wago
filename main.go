@@ -33,60 +33,8 @@ var (
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event, use -v to see all events")
 	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively")
 
-	daemon  = &Daemon{}
-	cmd     = &Cmd{}
 	machine Machine
 )
-
-/*
-func event() {
-	if cmd.Cmd != nil && cmd.ProcessState == nil {
-		cmd.Kill()
-	}
-
-	if daemon.Cmd != nil && daemon.ProcessState == nil {
-		daemon.Kill()
-	}
-
-	// run build command
-	if len(*buildCmd) > 0 {
-		cmd = NewCmd(*buildCmd)
-		ok := cmd.Run()
-		if !ok {
-			return
-		}
-	}
-
-	// start the daemon
-	if len(*daemonCmd) > 0 {
-		daemon = NewDaemon(*daemonCmd)
-
-		if len(*daemonTrigger) > 0 {
-			if !daemon.RunTrigger(*daemonTrigger) {
-				return
-			}
-		} else {
-			if !daemon.RunTimer(*daemonTimer) {
-				return
-			}
-		}
-	}
-
-	// run post command
-	if len(*postCmd) > 0 {
-		cmd = NewCmd(*postCmd)
-		ok := cmd.Run()
-		if !ok {
-			return
-		}
-	}
-
-	// open the url
-	if *url != "" {
-		openUrl()
-	}
-}
-*/
 
 func main() {
 	flag.Usage = func() {
