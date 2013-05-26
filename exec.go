@@ -71,7 +71,7 @@ func (c *RunWait) Run() bool {
 		}
 
 		// finished successfully
-		machine.Trans("next")
+		machine.Trans <- "next"
 	}(c.Cmd)
 
 	return true
@@ -112,7 +112,7 @@ func (c *Daemon) RunTimer(period int) bool {
 	Talk("Waiting miliseconds:", period)
 
 	timer := time.AfterFunc(time.Duration(period)*time.Millisecond, func() {
-		machine.Trans("next")
+		machine.Trans <- "next"
 	})
 
 	// watch process for exit
@@ -171,7 +171,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 				if err != nil {
 					Err("Unwatched pipe has errored:", err)
 				}
-				machine.Trans("next")
+				machine.Trans <- "next"
 				return
 			}
 

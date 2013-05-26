@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 )
 
 var (
@@ -67,11 +66,6 @@ func main() {
 	}
 	Talk("Target dir:", *targetDir)
 
-	r, err := regexp.Compile(*watchRegex)
-	if err != nil {
-		Fatal("Watch regex compile error:", err)
-	}
-
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)
@@ -120,22 +114,9 @@ func main() {
 		}()
 	}
 
-	machine = NewMachine()
+	machine = NewMachine(watcher)
 	go machine.RunHandler()
-	machine.Trans("begin")
+	machine.Trans <- "begin"
 
-	for {
-		select {
-		case ev := <-watcher.Event:
-			if r.MatchString(ev.String()) {
-				Note("Matched event:", ev.String())
-				machine.Trans("begin")
-			} else {
-				Talk("Ignored event:", ev.String())
-			}
-
-		case err = <-watcher.Error:
-			panic(err)
-		}
-	}
+	<-make(chan int)
 }
