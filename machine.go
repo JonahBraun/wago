@@ -61,6 +61,8 @@ func (m *Machine) begin() {
 }
 
 func (m *Machine) RunHandler() {
+	// run the action chain on start
+	m.begin()
 
 	r, err := regexp.Compile(*watchRegex)
 	if err != nil {

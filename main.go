@@ -116,7 +116,6 @@ func main() {
 
 	machine = NewMachine(watcher)
 	go machine.RunHandler()
-	machine.Trans <- "begin"
 
 	<-make(chan int)
 }
