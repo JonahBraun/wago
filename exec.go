@@ -140,8 +140,6 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 
 	c.Stdin = os.Stdin
 
-	trigger := make(chan bool)
-
 	stdoutPipe, err := c.StdoutPipe()
 	if err != nil {
 		panic(err)
@@ -160,7 +158,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 	stop := false
 	key := []byte(triggerString)
 
-	watchPipe := func(in io.Reader, out io.Writer) {
+	watchPipe := func(in io.Reader, out io.Writer, key []byte) {
 		b := make([]byte, 1)
 		spot := 0
 
@@ -171,7 +169,6 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 				if err != nil {
 					Err("Unwatched pipe has errored:", err)
 				}
-				machine.Trans <- "next"
 				return
 			}
 
@@ -182,8 +179,8 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 					spot++
 					if spot == len(key) {
 						Talk("Trigger match")
-						trigger <- true
 						stop = true
+						machine.Trans <- "next"
 					}
 				}
 			}
@@ -191,14 +188,13 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 				if err.Error() != "EOF" {
 					Err("Watched pipe error:", err)
 				}
-				trigger <- false
 				return
 			}
 		}
 	}
 
-	go watchPipe(stdoutPipe, os.Stdout)
-	go watchPipe(stderrPipe, os.Stderr)
+	go watchPipe(stdoutPipe, os.Stdout, key)
+	go watchPipe(stderrPipe, os.Stderr, key)
 
 	// watch process for exit
 	go func(cmd *Cmd) {
