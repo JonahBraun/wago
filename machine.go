@@ -12,17 +12,17 @@ type Action interface {
 }
 
 type Machine struct {
-	Trans chan string
-	chain []Action
-	step  int
+	Trans   chan string
+	chain   []Action
+	step    int
 	watcher *fsnotify.Watcher
 }
 
 func NewMachine(watcher *fsnotify.Watcher) Machine {
 	m := Machine{
-		Trans: make(chan string),
-		chain: make([]Action, 0),
-		step:  0,
+		Trans:   make(chan string),
+		chain:   make([]Action, 0),
+		step:    0,
 		watcher: watcher,
 	}
 

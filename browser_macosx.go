@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
 )
 
 var chrome_applescript = `
@@ -41,34 +40,42 @@ var chrome_applescript = `
   end tell
 `
 
-type Browser string
-
-func NewBrowser(url string) *Browser {
-	b := Browser(url)
-	return &b
+type Browser struct {
+	*Cmd
+	url string
 }
 
-func (b *Browser) Run() bool {
-	Note("Opening url (macosx/chrome):", *url)
+func NewBrowser(url string) *Browser {
+	return &Browser{url: url}
+}
 
-	cmd := exec.Command("osascript")
+func (c *Browser) Run() bool {
+	c.Cmd = NewCmd("osascript")
 
-	in, err := cmd.StdinPipe()
+	in, err := c.StdinPipe()
 	if err != nil {
 		panic(err)
 	}
 
-	in.Write([]byte(fmt.Sprintf(chrome_applescript, *url)))
-	in.Close()
+	go func(cmd *Cmd) {
+		in.Write([]byte(fmt.Sprintf(chrome_applescript, c.url)))
+		in.Close()
 
-	output, err := cmd.CombinedOutput()
+		Note("Opening url (macosx/chrome):", *url)
 
-	if err != nil {
-		Fatal("AppleScript Error:", string(output))
-	}
+		output, err := cmd.CombinedOutput()
+
+		if cmd.killed {
+			return
+		}
+
+		if err != nil {
+			Fatal("AppleScript Error:", string(output))
+		}
+
+		// finished successfully
+		machine.Trans <- "next"
+	}(c.Cmd)
 
 	return true
-}
-
-func (b *Browser) Kill() {
 }
