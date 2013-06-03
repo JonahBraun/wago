@@ -48,7 +48,7 @@ func Talk(v ...interface{}) {
 }
 
 func Note(v ...interface{}) {
-	if !*verboseQuiet {
+	if !*quiet {
 		Log(FgGreen, "✏  ", v...)
 	}
 }

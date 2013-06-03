@@ -18,7 +18,7 @@ import (
 
 var (
 	verbose      = flag.Bool("v", false, "Verbose")
-	verboseQuiet = flag.Bool("q", false, "Quiet, only warnings and errors")
+	quiet = flag.Bool("q", false, "Quiet, only warnings and errors")
 
 	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode, starts a web server and opens url to targetDir/index.html")
 	targetDir     = flag.String("dir", "", "Directory to watch, defaults to current")
@@ -47,6 +47,14 @@ func main() {
 	}
 
 	flag.Parse()
+
+	if (len(*daemonTrigger)>0) && (*daemonTimer>0) {
+		Fatal("Both daemon trigger and timer specified, use only one")
+	}
+
+	if len(*daemonTrigger)>0 || *daemonTimer>0 && len(*daemonCmd)==0 {
+		Fatal("Specify a daemon command to use the trigger or timer")
+	}
 
 	if *fiddle {
 		if *webServer == "" {
