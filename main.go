@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 var (
@@ -37,6 +38,8 @@ var (
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	flag.Usage = func() {
 		fmt.Println("WaGo (Watch, Go) build tool. Usage:")
 		flag.PrintDefaults()
