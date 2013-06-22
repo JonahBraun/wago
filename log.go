@@ -43,7 +43,7 @@ const (
 
 func Talk(v ...interface{}) {
 	if *verbose {
-		Log(FgCyan, "🍃  ", v...)
+		Log(FgCyan, "→  ", v...)
 	}
 }
 
@@ -54,19 +54,22 @@ func Note(v ...interface{}) {
 }
 
 func Warn(v ...interface{}) {
-	Log(FgYellow, "📢  ", v...)
+	Log(FgYellow, "⚠  ", v...)
 }
 
 func Err(v ...interface{}) {
-	Log(FgRed, "❗  ", v...)
+	Log(FgRed, "✖  ", v...)
 }
 
 func Fatal(v ...interface{}) {
-	Log(FgRed+Bright, "‼  ", v...)
+	Log(FgRed+Bright, "☠  ", v...)
 	os.Exit(1)
 }
 
 func Log(color string, icon string, v ...interface{}) {
+	if len(*leader)>0 {
+		icon = *leader
+	}
 	v[0] = fmt.Sprintf("%v%v%v%v", color, icon, v[0], TR)
 
 	fmt.Println(v...)

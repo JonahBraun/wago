@@ -31,6 +31,7 @@ var (
 	url           = flag.String("url", "", "URL to open")
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event, use -v to see all events")
 	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively")
+	leader = flag.String("leader", "", "Leader character for wago output (to differentiate from command output), defaults to emoji")
 
 	machine Machine
 )
