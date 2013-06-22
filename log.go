@@ -67,7 +67,7 @@ func Fatal(v ...interface{}) {
 }
 
 func Log(color string, icon string, v ...interface{}) {
-	if len(*leader)>0 {
+	if len(*leader) > 0 {
 		icon = *leader
 	}
 	v[0] = fmt.Sprintf("%v%v%v%v", color, icon, v[0], TR)

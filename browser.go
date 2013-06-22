@@ -16,7 +16,7 @@ func NewBrowser(url string) *Browser {
 }
 
 func (c *Browser) Run() bool {
-	command :=fmt.Sprintf("google-chrome \"%s\"", c.url)
+	command := fmt.Sprintf("google-chrome \"%s\"", c.url)
 	c.Cmd = NewCmd(command)
 
 	go func(cmd *Cmd) {
@@ -38,4 +38,3 @@ func (c *Browser) Run() bool {
 
 	return true
 }
-

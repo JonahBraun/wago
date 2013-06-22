@@ -18,21 +18,21 @@ import (
 )
 
 var (
-	verbose      = flag.Bool("v", false, "Verbose")
-	quiet = flag.Bool("q", false, "Quiet, only warnings and errors")
+	verbose = flag.Bool("v", false, "Verbose")
+	quiet   = flag.Bool("q", false, "Quiet, only warnings and errors")
 
-	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode, starts a web server and opens url to targetDir/index.html")
-	targetDir     = flag.String("dir", "", "Directory to watch, defaults to current")
 	buildCmd      = flag.String("cmd", "", "Bash command to run on change, Wabo will wait for this command to finish")
 	daemonCmd     = flag.String("daemon", "", "Bash command that starts a daemon, Wago will halt if the daemon exits before the trigger or timer")
-	daemonTrigger = flag.String("trigger", "", "A string the daemon will output that indicates it has started successfuly, Wago will continue on this trigger")
 	daemonTimer   = flag.Int("timer", 0, "Miliseconds to wait after starting daemon before continuing")
-	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
+	daemonTrigger = flag.String("trigger", "", "A string the daemon will output that indicates it has started successfuly, Wago will continue on this trigger")
+	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode, starts a web server and opens url to targetDir/index.html")
+	leader        = flag.String("leader", "", "Leader character for wago output (to differentiate from command output), defaults to emoji")
 	postCmd       = flag.String("pcmd", "", "Bash command to run after the daemon has successfully started")
+	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively")
+	targetDir     = flag.String("dir", "", "Directory to watch, defaults to current")
 	url           = flag.String("url", "", "URL to open")
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event, use -v to see all events")
-	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively")
-	leader = flag.String("leader", "", "Leader character for wago output (to differentiate from command output), defaults to emoji")
+	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
 
 	machine Machine
 )
@@ -52,11 +52,11 @@ func main() {
 
 	flag.Parse()
 
-	if (len(*daemonTrigger)>0) && (*daemonTimer>0) {
+	if (len(*daemonTrigger) > 0) && (*daemonTimer > 0) {
 		Fatal("Both daemon trigger and timer specified, use only one")
 	}
 
-	if len(*daemonTrigger)>0 || *daemonTimer>0 && len(*daemonCmd)==0 {
+	if len(*daemonTrigger) > 0 || *daemonTimer > 0 && len(*daemonCmd) == 0 {
 		Fatal("Specify a daemon command to use the trigger or timer")
 	}
 
