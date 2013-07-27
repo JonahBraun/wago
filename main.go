@@ -45,6 +45,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 
+	// TODO: this should check for actions
 	if len(os.Args) < 2 {
 		flag.Usage()
 		Fatal("You must specify an action")
@@ -65,7 +66,7 @@ func main() {
 			*webServer = ":9933"
 		}
 		if *url == "" {
-			*url = "http://localhost" + *webServer + "/index.html"
+			*url = "http://localhost" + *webServer + "/"
 		}
 	}
 

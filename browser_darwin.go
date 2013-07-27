@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-var chrome_applescript = `
+var chromeApplescript = `
   tell application "Google Chrome"
     activate
     set theUrl to "%v"
@@ -58,7 +58,7 @@ func (c *Browser) Run() bool {
 	}
 
 	go func(cmd *Cmd) {
-		in.Write([]byte(fmt.Sprintf(chrome_applescript, c.url)))
+		in.Write([]byte(fmt.Sprintf(chromeApplescript, c.url)))
 		in.Close()
 
 		Note("Opening url (macosx/chrome):", *url)
