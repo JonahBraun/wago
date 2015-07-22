@@ -57,7 +57,7 @@ func main() {
 		Fatal("Both daemon trigger and timer specified, use only one")
 	}
 
-	if len(*daemonTrigger) > 0 || *daemonTimer > 0 && len(*daemonCmd) == 0 {
+	if ( len(*daemonTrigger) > 0 || *daemonTimer > 0 ) && len(*daemonCmd) == 0 {
 		Fatal("Specify a daemon command to use the trigger or timer")
 	}
 

@@ -1,9 +1,9 @@
 Wago (Watch, Go) development tool
 
 ## Some things you can use Wago to do:
-* Watch your JS or SASS directory for changes. Lint, recompile, etc., then refresh your Chrome tab so you can see the results.
-* Watch the go source directory of the webapp your building. On change: stop the webapp, recompile, start, wait for the webapp to load it's database, then run a cURL command to test a REST URL.
-* Run a webserver in the current directory for a one-off JS test page.
+* Watch your JS or SASS directory for changes. Lint, recompile, etc., then refresh your Chrome tab so you can see the results. `wago `
+* Watch the go source directory of the webapp your building. On change: stop the webapp, recompile, start, wait for the webapp to load it's database, then run a cURL command to test a REST URL. `wago `
+* Run a webserver in the current directory for a one-off JS test page. `wago -fiddle`
 
 ## Features
 
