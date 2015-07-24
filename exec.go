@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"syscall"
 	"time"
 )
 
@@ -27,9 +28,31 @@ func (c *Cmd) Kill() {
 		return
 	}
 
-	Note("Killing command ("+c.Name+"), pid:", c.Process)
+	// set the killed flag so when it dies we know we killed it on purpose
 	c.killed = true
 
+	if *exitWait < 1 {
+		Note("Killing ("+c.Name+"), pid", c.Process)
+		if err := c.Process.Kill(); err != nil {
+			Err("Failed to kill command ("+c.Name+"), error:", err)
+		}
+		return
+	}
+
+	Note("Sending exit signal (SIGINT) to command ("+c.Name+"), pid:", c.Process)
+
+	if err := c.Process.Signal(syscall.SIGINT); err != nil {
+		Err("Failed to kill command ("+c.Name+"):", err)
+		return
+	}
+
+	// give the process time to cleanup, check again if it has finished (ProcessState is set)
+	time.Sleep(time.Duration(*exitWait) * time.Millisecond) // 3ms
+	if c.ProcessState != nil {
+		return
+	}
+
+	Note("Command ("+c.Name+") still alive, killing pid", c.Process)
 	if err := c.Process.Kill(); err != nil {
 		Err("Failed to kill command ("+c.Name+"):", err)
 	}

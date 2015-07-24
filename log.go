@@ -43,7 +43,7 @@ const (
 
 func Talk(v ...interface{}) {
 	if *verbose {
-		Log(FgCyan, "→  ", v...)
+		Log(FgCyan, "→ ", v...)
 	}
 }
 

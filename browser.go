@@ -20,7 +20,7 @@ func (c *Browser) Run() bool {
 	c.Cmd = NewCmd(command)
 
 	go func(cmd *Cmd) {
-		Note("Opening url (OS agnostic, this may note work):", c.url)
+		Note("Opening url (OS agnostic, this may not work):", c.url)
 
 		output, err := cmd.CombinedOutput()
 

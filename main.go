@@ -5,6 +5,14 @@
 	This is my first go project, suggestions welcome!
 */
 
+/*
+	TODO: catch ctrl-c and ensure clean output so term isn't screwed
+	this can happen from killing commands like erlang's iex
+	see https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
+
+	TODO: specifying watch regex w/o cmd errors
+*/
+
 package main
 
 import (
@@ -25,9 +33,10 @@ var (
 	daemonCmd     = flag.String("daemon", "", "Bash command that starts a daemon, Wago will halt if the daemon exits before the trigger or timer")
 	daemonTimer   = flag.Int("timer", 0, "Miliseconds to wait after starting daemon before continuing")
 	daemonTrigger = flag.String("trigger", "", "A string the daemon will output that indicates it has started successfuly, Wago will continue on this trigger")
+	exitWait      = flag.Int("exitwait", 0, "If 0, kills processes immediately, if >0, sends SIGINT and waits X ms for process to exit before killing")
 	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode, starts a web server and opens url to targetDir/index.html")
 	leader        = flag.String("leader", "", "Leader character for wago output (to differentiate from command output), defaults to emoji")
-	postCmd       = flag.String("pcmd", "", "Bash command to run after the daemon has successfully started")
+	postCmd       = flag.String("pcmd", "", "Bash command to run after the daemon has successfully started, use this to kick off your test suite")
 	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively")
 	targetDir     = flag.String("dir", "", "Directory to watch, defaults to current")
 	url           = flag.String("url", "", "URL to open")
@@ -57,8 +66,13 @@ func main() {
 		Fatal("Both daemon trigger and timer specified, use only one")
 	}
 
-	if ( len(*daemonTrigger) > 0 || *daemonTimer > 0 ) && len(*daemonCmd) == 0 {
+	if (len(*daemonTrigger) > 0 || *daemonTimer > 0) && len(*daemonCmd) == 0 {
 		Fatal("Specify a daemon command to use the trigger or timer")
+	}
+
+	if len(*buildCmd) == 0 && len(*daemonCmd) == 0 && !*fiddle && len(*postCmd) == 0 && len(*url) == 0 && len(*webServer) == 0 {
+		flag.Usage()
+		Fatal("You must specify an action")
 	}
 
 	if *fiddle {
