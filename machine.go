@@ -50,12 +50,12 @@ func (m *Machine) action() {
 }
 
 func (m *Machine) begin() {
-	Talk("Killing all processes")
+	log.Debug("Killing all processes")
 	for i := range m.chain {
 		m.chain[i].Kill()
 	}
 
-	Talk("Begin action chain")
+	log.Debug("Begin action chain")
 	m.step = 0
 	m.action()
 }
@@ -66,25 +66,25 @@ func (m *Machine) RunHandler() {
 
 	r, err := regexp.Compile(*watchRegex)
 	if err != nil {
-		Fatal("Watch regex compile error:", err)
+		log.Fatal("Watch regex compile error:", err)
 	}
 
 	for {
 		select {
 		case ev := <-m.watcher.Event:
 			if r.MatchString(ev.String()) {
-				Note("Matched event:", ev.String())
+				log.Info("Matched event:", ev.String())
 				m.begin()
 			} else {
-				Talk("Ignored event:", ev.String())
+				log.Debug("Ignored event:", ev.String())
 			}
 
 		case err = <-m.watcher.Error:
-			Fatal("Watcher error:", err)
+			log.Fatal("Watcher error:", err)
 
 		case <-m.Trans:
 			if m.step == len(m.chain)-1 {
-				Talk("Done!")
+				log.Debug("Done!")
 				break
 			}
 			m.step++

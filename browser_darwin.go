@@ -61,7 +61,7 @@ func (c *Browser) Run() bool {
 		in.Write([]byte(fmt.Sprintf(chromeApplescript, c.url)))
 		in.Close()
 
-		Note("Opening url (macosx/chrome):", *url)
+		log.Info("Opening url (macosx/chrome):", *url)
 
 		output, err := cmd.CombinedOutput()
 
@@ -70,7 +70,7 @@ func (c *Browser) Run() bool {
 		}
 
 		if err != nil {
-			Fatal("AppleScript Error:", string(output))
+			log.Fatal("AppleScript Error:", string(output))
 		}
 
 		// finished successfully

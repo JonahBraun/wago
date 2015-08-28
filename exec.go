@@ -32,17 +32,17 @@ func (c *Cmd) Kill() {
 	c.killed = true
 
 	if *exitWait < 1 {
-		Note("Killing ("+c.Name+"), pid", c.Process)
+		log.Info("Killing ("+c.Name+"), pid", c.Process)
 		if err := c.Process.Kill(); err != nil {
-			Err("Failed to kill command ("+c.Name+"), error:", err)
+			log.Err("Failed to kill command ("+c.Name+"), error:", err)
 		}
 		return
 	}
 
-	Note("Sending exit signal (SIGINT) to command ("+c.Name+"), pid:", c.Process)
+	log.Info("Sending exit signal (SIGINT) to command ("+c.Name+"), pid:", c.Process)
 
 	if err := c.Process.Signal(syscall.SIGINT); err != nil {
-		Err("Failed to kill command ("+c.Name+"):", err)
+		log.Err("Failed to kill command ("+c.Name+"):", err)
 		return
 	}
 
@@ -52,9 +52,9 @@ func (c *Cmd) Kill() {
 		return
 	}
 
-	Note("Command ("+c.Name+") still alive, killing pid", c.Process)
+	log.Info("Command ("+c.Name+") still alive, killing pid", c.Process)
 	if err := c.Process.Kill(); err != nil {
-		Err("Failed to kill command ("+c.Name+"):", err)
+		log.Err("Failed to kill command ("+c.Name+"):", err)
 	}
 }
 
@@ -68,7 +68,7 @@ func NewRunWait(name string) *RunWait {
 }
 
 func (c *RunWait) Run() bool {
-	Note("Running command:", c.Name)
+	log.Info("Running command:", c.Name)
 
 	c.Cmd = NewCmd(c.Name)
 
@@ -78,7 +78,7 @@ func (c *RunWait) Run() bool {
 
 	err := c.Start()
 	if err != nil {
-		Err("Error running command:", err)
+		log.Err("Error running command:", err)
 		return false
 	}
 
@@ -89,7 +89,7 @@ func (c *RunWait) Run() bool {
 			return
 		}
 		if err != nil {
-			Err("Command exit error:", err)
+			log.Err("Command exit error:", err)
 			return
 		}
 
@@ -120,7 +120,7 @@ func (c *Daemon) Run() bool {
 }
 
 func (c *Daemon) RunTimer(period int) bool {
-	Note("Starting daemon:", c.Name)
+	log.Info("Starting daemon:", c.Name)
 
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
@@ -128,11 +128,11 @@ func (c *Daemon) RunTimer(period int) bool {
 
 	err := c.Start()
 	if err != nil {
-		Err("Error starting daemon:", err)
+		log.Err("Error starting daemon:", err)
 		return false
 	}
 
-	Talk("Waiting miliseconds:", period)
+	log.Debug("Waiting miliseconds:", period)
 
 	timer := time.AfterFunc(time.Duration(period)*time.Millisecond, func() {
 		machine.Trans <- "next"
@@ -147,19 +147,19 @@ func (c *Daemon) RunTimer(period int) bool {
 			return
 		}
 		if err != nil {
-			Err("Command exit error:", err)
+			log.Err("Command exit error:", err)
 			return
 		}
 
 		// A daemon probably shouldn't be exiting
-		Warn("Daemon exited cleanly")
+		log.Warn("Daemon exited cleanly")
 	}(c.Cmd)
 
 	return true
 }
 
 func (c *Daemon) RunTrigger(triggerString string) bool {
-	Note("Starting daemon:", c.Name)
+	log.Info("Starting daemon:", c.Name)
 
 	c.Stdin = os.Stdin
 
@@ -174,7 +174,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 
 	err = c.Start()
 	if err != nil {
-		Err("Error starting daemon:", err)
+		log.Err("Error starting daemon:", err)
 		return false
 	}
 
@@ -190,7 +190,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 			if stop {
 				_, err := io.Copy(out, in)
 				if err != nil {
-					Err("Unwatched pipe has errored:", err)
+					log.Err("Unwatched pipe has errored:", err)
 				}
 				return
 			}
@@ -201,7 +201,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 				if b[0] == key[spot] {
 					spot++
 					if spot == len(key) {
-						Talk("Trigger match")
+						log.Debug("Trigger match")
 						stop = true
 						machine.Trans <- "next"
 					}
@@ -209,7 +209,7 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 			}
 			if err != nil {
 				if err.Error() != "EOF" {
-					Err("Watched pipe error:", err)
+					log.Err("Watched pipe error:", err)
 				}
 				return
 			}
@@ -227,12 +227,12 @@ func (c *Daemon) RunTrigger(triggerString string) bool {
 			return
 		}
 		if err != nil {
-			Err("Command exit error:", err)
+			log.Err("Command exit error:", err)
 			return
 		}
 
 		// A daemon probably shouldn't be exiting
-		Warn("Daemon exited cleanly")
+		log.Warn("Daemon exited cleanly")
 	}(c.Cmd)
 
 	return true

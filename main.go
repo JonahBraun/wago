@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/JonahBraun/dog"
 	"github.com/howeyc/fsnotify"
 	"net/http"
 	"os"
@@ -26,6 +27,7 @@ import (
 )
 
 var (
+	log     *dog.Dog
 	verbose = flag.Bool("v", false, "Verbose")
 	quiet   = flag.Bool("q", false, "Quiet, only warnings and errors")
 
@@ -57,22 +59,30 @@ func main() {
 	// TODO: this should check for actions
 	if len(os.Args) < 2 {
 		flag.Usage()
-		Fatal("You must specify an action")
+		log.Fatal("You must specify an action")
 	}
 
 	flag.Parse()
 
+	if *verbose {
+		log = dog.NewDog(dog.DEBUG)
+	} else if *quiet {
+		log = dog.NewDog(dog.WARN)
+	} else {
+		log = dog.NewDog(dog.INFO)
+	}
+
 	if (len(*daemonTrigger) > 0) && (*daemonTimer > 0) {
-		Fatal("Both daemon trigger and timer specified, use only one")
+		log.Fatal("Both daemon trigger and timer specified, use only one")
 	}
 
 	if (len(*daemonTrigger) > 0 || *daemonTimer > 0) && len(*daemonCmd) == 0 {
-		Fatal("Specify a daemon command to use the trigger or timer")
+		log.Fatal("Specify a daemon command to use the trigger or timer")
 	}
 
 	if len(*buildCmd) == 0 && len(*daemonCmd) == 0 && !*fiddle && len(*postCmd) == 0 && len(*url) == 0 && len(*webServer) == 0 {
 		flag.Usage()
-		Fatal("You must specify an action")
+		log.Fatal("You must specify an action")
 	}
 
 	if *fiddle {
@@ -91,7 +101,7 @@ func main() {
 		}
 		targetDir = &cwd
 	}
-	Talk("Target dir:", *targetDir)
+	log.Debug("Target dir:", *targetDir)
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -104,10 +114,10 @@ func main() {
 			return nil
 		}
 
-		Talk("Watching dir:", path)
+		log.Debug("Watching dir:", path)
 
 		if err != nil {
-			Err("Skipping dir:", path, err)
+			log.Err("Skipping dir:", path, err)
 			return filepath.SkipDir
 		}
 
@@ -133,10 +143,10 @@ func main() {
 
 	if *webServer != "" {
 		go func() {
-			Note("Starting web server on port", *webServer)
+			log.Info("Starting web server on port", *webServer)
 			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*targetDir)))
 			if err != nil {
-				Fatal("Error starting web server:", err)
+				log.Fatal("Error starting web server:", err)
 			}
 		}()
 	}
