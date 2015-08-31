@@ -20,7 +20,7 @@ simulate_change() {
 
 simulate_change &
 
-go install && wago -v\
+go install -race && wago -v\
 	-cmd='echo "BUILDCMD 1s" && sleep 1' \
 	-daemon='./test_daemon.bash' \
 	-pcmd='echo POSTCMD' \

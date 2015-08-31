@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/howeyc/fsnotify"
+	"fmt"
 	"regexp"
 )
 
@@ -11,14 +11,19 @@ type Action interface {
 	Kill()
 }
 
+type Watcher struct {
+	Event chan fmt.Stringer
+	Error chan error
+}
+
 type Machine struct {
 	Trans   chan string
 	chain   []Action
 	step    int
-	watcher *fsnotify.Watcher
+	watcher *Watcher
 }
 
-func NewMachine(watcher *fsnotify.Watcher) Machine {
+func NewMachine(watcher *Watcher) Machine {
 	m := Machine{
 		Trans:   make(chan string),
 		chain:   make([]Action, 0),
@@ -66,7 +71,7 @@ func (m *Machine) RunHandler() {
 
 	r, err := regexp.Compile(*watchRegex)
 	if err != nil {
-		log.Fatal("Watch regex compile error:", err)
+		log.Fatal("Watch regex compile error:", err)(4)
 	}
 
 	for {
@@ -80,7 +85,7 @@ func (m *Machine) RunHandler() {
 			}
 
 		case err = <-m.watcher.Error:
-			log.Fatal("Watcher error:", err)
+			log.Fatal("Watcher error:", err)(5)
 
 		case <-m.Trans:
 			if m.step == len(m.chain)-1 {

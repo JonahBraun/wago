@@ -70,7 +70,7 @@ func (c *Browser) Run() bool {
 		}
 
 		if err != nil {
-			log.Fatal("AppleScript Error:", string(output))
+			log.Fatal("AppleScript Error:", string(output))(3)
 		}
 
 		// finished successfully

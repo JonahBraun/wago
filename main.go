@@ -1,8 +1,6 @@
 /*
 	Watches the current directory for changes, and runs the command you supply as arguments
 	in response to changes.
-
-	This is my first go project, suggestions welcome!
 */
 
 /*
@@ -27,7 +25,7 @@ import (
 )
 
 var (
-	log     *dog.Dog
+	log     = dog.NewDog(dog.DEBUG)
 	verbose = flag.Bool("v", false, "Verbose")
 	quiet   = flag.Bool("q", false, "Quiet, only warnings and errors")
 
@@ -44,6 +42,7 @@ var (
 	url           = flag.String("url", "", "URL to open")
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event, use -v to see all events")
 	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
+	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
 
 	machine Machine
 )
@@ -59,7 +58,7 @@ func main() {
 	// TODO: this should check for actions
 	if len(os.Args) < 2 {
 		flag.Usage()
-		log.Fatal("You must specify an action")
+		log.Fatal("You must specify an action")(1)
 	}
 
 	flag.Parse()
@@ -72,17 +71,25 @@ func main() {
 		log = dog.NewDog(dog.INFO)
 	}
 
+	if len(*shell) == 0 {
+		*shell = os.Getenv("SHELL")
+		if len(*shell) == 0 {
+			*shell = "/bin/sh"
+		}
+	}
+	log.Debug("Using shell", *shell)
+
 	if (len(*daemonTrigger) > 0) && (*daemonTimer > 0) {
-		log.Fatal("Both daemon trigger and timer specified, use only one")
+		log.Fatal("Both daemon trigger and timer specified, use only one")(1)
 	}
 
 	if (len(*daemonTrigger) > 0 || *daemonTimer > 0) && len(*daemonCmd) == 0 {
-		log.Fatal("Specify a daemon command to use the trigger or timer")
+		log.Fatal("Specify a daemon command to use the trigger or timer")(1)
 	}
 
 	if len(*buildCmd) == 0 && len(*daemonCmd) == 0 && !*fiddle && len(*postCmd) == 0 && len(*url) == 0 && len(*webServer) == 0 {
 		flag.Usage()
-		log.Fatal("You must specify an action")
+		log.Fatal("You must specify an action")(1)
 	}
 
 	if *fiddle {
@@ -146,13 +153,23 @@ func main() {
 			log.Info("Starting web server on port", *webServer)
 			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*targetDir)))
 			if err != nil {
-				log.Fatal("Error starting web server:", err)
+				log.Fatal("Error starting web server:", err)(2)
 			}
 		}()
 	}
 
-	machine = NewMachine(watcher)
+	// To facilitate testing (which sends artifical events from a timer),
+	// we have an abstracted struct Watcher that holds the applicable channels.
+	// fsnotify.FileEvent is a fmt.Stringer, but channels cannot be converted.
+	// Unfortunately, an extra channel is necessary to perform the conversion.
+	event := make(chan fmt.Stringer)
+	go func() {
+		for {
+			event <- <-watcher.Event
+		}
+	}()
+	machine = NewMachine(&Watcher{event, watcher.Error})
 	go machine.RunHandler()
 
-	<-make(chan int)
+	select {}
 }

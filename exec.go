@@ -16,14 +16,19 @@ type Cmd struct {
 
 func NewCmd(name string) *Cmd {
 	return &Cmd{
-		Name:   name,
-		Cmd:    exec.Command("/bin/bash", "-c", name),
+		Name: name,
+		// -c is the POSIX switch to run a command
+		Cmd:    exec.Command(*shell, "-c", name),
 		killed: false,
 	}
 }
 
 func (c *Cmd) Kill() {
-	// return if the cmd has not been run or the command has finished (ProcessState is set)
+	// return if:
+	// command was never created,
+	// command failed to start (PID is nil)
+	// the command has finished (ProcessState is set)
+	//if c == nil || c.Process == nil || c.ProcessState != nil {
 	if c == nil || c.ProcessState != nil {
 		return
 	}
@@ -78,7 +83,7 @@ func (c *RunWait) Run() bool {
 
 	err := c.Start()
 	if err != nil {
-		log.Err("Error running command:", err)
+		log.Fatal("Error running command:", err)(6)
 		return false
 	}
 
