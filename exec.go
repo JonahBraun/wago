@@ -64,18 +64,15 @@ func (c *Cmd) Kill() {
 }
 
 type RunWait struct {
-	Name string
 	*Cmd
 }
 
 func NewRunWait(name string) *RunWait {
-	return &RunWait{Name: name}
+	return &RunWait{Cmd: NewCmd(name)}
 }
 
 func (c *RunWait) Run() bool {
-	log.Info("Running command:", c.Name)
-
-	c.Cmd = NewCmd(c.Name)
+	log.Info("Running command, waiting:", c.Name)
 
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
@@ -106,17 +103,14 @@ func (c *RunWait) Run() bool {
 }
 
 type Daemon struct {
-	Name string
 	*Cmd
 }
 
 func NewDaemon(name string) *Daemon {
-	return &Daemon{Name: name}
+	return &Daemon{Cmd: NewCmd(name)}
 }
 
 func (c *Daemon) Run() bool {
-	c.Cmd = NewCmd(c.Name)
-
 	if len(*daemonTrigger) > 0 {
 		return c.RunTrigger(*daemonTrigger)
 	} else {
