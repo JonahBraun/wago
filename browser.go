@@ -15,26 +15,16 @@ func NewBrowser(url string) *Browser {
 	return &Browser{url: url}
 }
 
-func (c *Browser) Run() bool {
-	command := fmt.Sprintf("google-chrome \"%s\"", c.url)
-	c.Cmd = NewCmd(command)
+func (cmd *Browser) Run() {
+	command := fmt.Sprintf("google-chrome \"%s\"", cmd.url)
+	cmd.Cmd = NewCmd(command)
 
-	go func(cmd *Cmd) {
-		log.Info("Opening url (OS agnostic, this may not work):", c.url)
+	log.Info("Opening url (OS agnostic, this may not work):", cmd.url)
 
-		output, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 
-		if cmd.killed {
-			return
-		}
-
-		if err != nil {
-			log.Err("Error opening URL (error, output):", err, string(output))
-		}
-
-		// finished successfully
-		machine.Trans <- "next"
-	}(c.Cmd)
-
-	return true
+	if !cmd.killed && err != nil {
+		log.Err("Error opening URL (error, output):", err, string(output))
+	}
+	close(cmd.done)
 }

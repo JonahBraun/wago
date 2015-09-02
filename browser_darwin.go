@@ -49,33 +49,23 @@ func NewBrowser(url string) *Browser {
 	return &Browser{url: url}
 }
 
-func (c *Browser) Run() bool {
-	c.Cmd = NewCmd("osascript")
+func (cmd *Browser) Run() {
+	cmd.Cmd = NewCmd("osascript")
 
-	in, err := c.StdinPipe()
+	in, err := cmd.StdinPipe()
 	if err != nil {
 		panic(err)
 	}
 
-	go func(cmd *Cmd) {
-		in.Write([]byte(fmt.Sprintf(chromeApplescript, c.url)))
-		in.Close()
+	in.Write([]byte(fmt.Sprintf(chromeApplescript, cmd.url)))
+	in.Close()
 
-		log.Info("Opening url (macosx/chrome):", *url)
+	log.Info("Opening url (macosx/chrome):", *url)
 
-		output, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 
-		if cmd.killed {
-			return
-		}
-
-		if err != nil {
-			log.Fatal("AppleScript Error:", string(output))(3)
-		}
-
-		// finished successfully
-		machine.Trans <- "next"
-	}(c.Cmd)
-
-	return true
+	if !cmd.killed && err != nil {
+		log.Fatal("AppleScript Error:", string(output))(3)
+	}
+	close(cmd.done)
 }

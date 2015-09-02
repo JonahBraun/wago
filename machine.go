@@ -7,7 +7,7 @@ import (
 
 type Action interface {
 	// returns true if the command was started ok
-	Run() bool
+	Run()
 	Kill()
 }
 
