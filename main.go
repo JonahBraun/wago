@@ -1,15 +1,8 @@
-/*
-	Watches the current directory for changes, and runs the command you supply as arguments
-	in response to changes.
-*/
+// Wago (Watch, Go)
+// A general purpose watch / build development tool.
 
-/*
-	TODO: catch ctrl-c and ensure clean output so term isn't screwed
-	this can happen from killing commands like erlang's iex
-	see https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
-
-	TODO: specifying watch regex w/o cmd errors
-*/
+// TODO: catch SIGINT and send dog.TR to ensure a clean term
+// see https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
 
 package main
 
