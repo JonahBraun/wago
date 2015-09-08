@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var announce func(...interface{})
+var announceTest func(...interface{})
 
 type FakeEvent string
 
@@ -30,7 +30,7 @@ func (watcher *Watcher) SendCreate() {
 }
 
 func TestMain(m *testing.M) {
-	announce = dog.CreateLog(dog.FgYellow, "")
+	announceTest = dog.CreateLog(dog.FgYellow, "")
 	flag.Parse()
 
 	// essential setup commands
@@ -41,62 +41,75 @@ func TestMain(m *testing.M) {
 }
 
 func TestFsRace(t *testing.T) {
-	announce("TestFsRace")
+	announceTest("TestFsRace")
 
 	*buildCmd = "sleep 1 && echo foo"
 
 	watcher := NewFakeWatcher()
 
+	quit := make(chan struct{})
+
 	go func() {
 		duration := time.Duration(1)
 		for {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+
 			watcher.Event <- FakeEvent(`"/tmp/fake.txt": CREATE`)
 			time.Sleep(duration)
 			duration = duration * 2
 		}
 	}()
 
-	go runChain(watcher)
+	go func() {
+		// should not take more than a second to hit a race if it exists
+		// but we also want to see our buildCmd output
+		time.Sleep(time.Duration(2 * time.Second))
+		close(quit)
+	}()
 
-	// should not take more than a second to hit a race if it exists
-	// but we also want to see our buildCmd output
-	time.Sleep(time.Duration(2 * time.Second))
+	runChain(watcher, quit)
 }
 
 func TestDaemon(t *testing.T) {
-	announce("TestDaemon")
+	announceTest("TestDaemon")
 
 	*daemonCmd = "sleep 1s && echo foo && sleep 5s && echo done"
 	watcher := NewFakeWatcher()
 
+	quit := make(chan struct{})
 	go func() {
 		time.Sleep(time.Duration(1 * time.Second))
 		watcher.SendCreate()
 		time.Sleep(time.Duration(2 * time.Second))
 		watcher.SendCreate()
+		time.Sleep(time.Duration(2 * time.Second))
+		close(quit)
 	}()
 
-	go runChain(watcher)
-
-	time.Sleep(time.Duration(8 * time.Second))
+	runChain(watcher, quit)
 }
 
 func TestDaemonTimer(t *testing.T) {
-	announce("TestDaemonTimer")
+	announceTest("TestDaemonTimer")
 
 	*daemonCmd = "sleep 1s && echo foo && sleep 5s && echo done"
 	*daemonTimer = 2 * int(time.Second)
 
 	watcher := NewFakeWatcher()
 
+	quit := make(chan struct{})
 	go func() {
 		time.Sleep(time.Duration(1 * time.Second))
 		watcher.SendCreate()
 		time.Sleep(time.Duration(4 * time.Second))
 		watcher.SendCreate()
+		time.Sleep(time.Duration(2 * time.Second))
+		close(quit)
 	}()
 
-	go runChain(watcher)
-
-	time.Sleep(time.Duration(8 * time.Second))
+	runChain(watcher, quit)
 }

@@ -55,16 +55,20 @@ type Watcher struct {
 func main() {
 	// the following function calls merely serve to logically organize what
 	// is otherwise a VERY lengthy setup
+
+	announce()
+
 	configSetup()
 
 	startWebServer()
 
-	runChain(newWatcher())
+	runChain(newWatcher(), make(chan struct{}))
 }
 
-func runChain(watcher *Watcher) {
+func runChain(watcher *Watcher, quit chan struct{}) {
 	chain := make([]Runnable, 0, 5)
 
+	// build chain of runnables
 	if len(*buildCmd) > 0 {
 		chain = append(chain, NewRunWait(*buildCmd))
 	}
@@ -118,6 +122,10 @@ func runChain(watcher *Watcher) {
 					}
 				case err = <-watcher.Error:
 					log.Fatal("Watcher error:", err)(5)
+				case <-quit:
+					// currently only used by test suite
+					close(kill)
+					return
 				}
 			}
 		}()
@@ -144,6 +152,14 @@ func runChain(watcher *Watcher) {
 
 		// ensure all runnables (procs) are dead before restarting the chain
 		wg.Wait()
+
+		// check if we should quit, currently only used by test suites for teardown
+		select {
+		case <-quit:
+			log.Warn("Quitting run chain")
+			return
+		default:
+		}
 	}
 }
 
