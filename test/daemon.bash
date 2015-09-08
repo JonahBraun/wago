@@ -22,7 +22,7 @@ simulate_change &
 
 go install -race && wago -v\
 	-cmd='echo "BUILDCMD 1s" && sleep 1' \
-	-daemon='./test_daemon.bash' \
+	-daemon='test/mock_daemon.bash' \
 	-pcmd='echo POSTCMD' \
 	-web=':4567' \
 	-url='http://localhost:4567/main.go' \
