@@ -40,32 +40,33 @@ var chromeApplescript = `
   end tell
 `
 
-type Browser struct {
-	*Cmd
-	url string
+func NewBrowser(url string) Runnable {
+	return func(kill chan struct{}) (chan bool, chan struct{}) {
+		cmd := NewCmd("osascript")
+
+		go cmd.RunBrowser(url)
+
+		return cmd.done, cmd.dead
+	}
 }
 
-func NewBrowser(url string) *Browser {
-	return &Browser{url: url}
-}
-
-func (cmd *Browser) Run() {
-	cmd.Cmd = NewCmd("osascript")
+func (cmd *Cmd) RunBrowser(url string) {
+	defer close(cmd.done)
+	defer close(cmd.dead)
 
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		panic(err)
 	}
 
-	in.Write([]byte(fmt.Sprintf(chromeApplescript, cmd.url)))
+	in.Write([]byte(fmt.Sprintf(chromeApplescript, url)))
 	in.Close()
 
-	log.Info("Opening url (macosx/chrome):", *url)
+	log.Info("Opening url (macosx/chrome):", url)
 
 	output, err := cmd.CombinedOutput()
 
-	if !cmd.killed && err != nil {
+	if err != nil {
 		log.Fatal("AppleScript Error:", string(output))(3)
 	}
-	close(cmd.done)
 }

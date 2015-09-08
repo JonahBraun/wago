@@ -21,7 +21,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"sync"
 )
 
 var (
@@ -43,11 +45,155 @@ var (
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event, use -v to see all events")
 	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
 	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
-
-	machine Machine
 )
 
+type Watcher struct {
+	Event chan fmt.Stringer
+	Error chan error
+}
+
 func main() {
+	// the following function calls merely serve to logically organize what
+	// is otherwise a VERY lengthy setup
+	configSetup()
+
+	startWebServer()
+
+	runChain(newWatcher())
+}
+
+func runChain(watcher *Watcher) {
+	chain := make([]Runnable, 0, 5)
+
+	if len(*buildCmd) > 0 {
+		chain = append(chain, NewRunWait(*buildCmd))
+	}
+	if len(*daemonCmd) > 0 {
+		if len(*daemonTrigger) > 0 {
+			chain = append(chain, NewDaemonTrigger(*daemonCmd, *daemonTrigger))
+		} else {
+			chain = append(chain, NewDaemonTimer(*daemonCmd, *daemonTimer))
+		}
+	}
+	if len(*postCmd) > 0 {
+		chain = append(chain, NewRunWait(*postCmd))
+	}
+	if *url != "" {
+		chain = append(chain, NewBrowser(*url))
+	}
+
+	eventRegex, err := regexp.Compile(*watchRegex)
+	if err != nil {
+		log.Fatal("Watch regex compile error:", err)(1)
+	}
+
+	var wg sync.WaitGroup
+
+	// main loop
+	for {
+		kill := make(chan struct{})
+
+		go func() {
+			select {
+			case ev := <-watcher.Event:
+				if eventRegex.MatchString(ev.String()) {
+					log.Info("Matched event:", ev.String())
+					close(kill)
+				} else {
+					log.Debug("Ignored event:", ev.String())
+				}
+			case err = <-watcher.Error:
+				log.Fatal("Watcher error:", err)(5)
+			}
+		}()
+
+		for _, runnable := range chain {
+			done, dead := runnable(kill)
+			wg.Add(1)
+
+			go func() {
+				<-dead
+				wg.Done()
+			}()
+
+			select {
+			case <-done:
+			case <-kill:
+				break
+			}
+		}
+
+		// ensure all runnables (procs) are dead before restarting the chain
+		wg.Wait()
+	}
+}
+
+func newWatcher() *Watcher {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Close()
+
+	watchDir := func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			return nil
+		}
+
+		log.Debug("Watching dir:", path)
+
+		if err != nil {
+			log.Err("Skipping dir:", path, err)
+			return filepath.SkipDir
+		}
+
+		err = watcher.Watch(path)
+		if err != nil {
+			panic(err)
+		}
+
+		return nil
+	}
+
+	if *recursive == true {
+		err = filepath.Walk(*targetDir, watchDir)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		err = watcher.Watch(*targetDir)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// To facilitate testing (which sends artifical events from a timer),
+	// we have an abstracted struct Watcher that holds the applicable channels.
+	// fsnotify.FileEvent is a fmt.Stringer, but channels cannot be converted.
+	// Unfortunately, an extra channel is necessary to perform the conversion.
+	event := make(chan fmt.Stringer)
+	go func() {
+		for {
+			event <- <-watcher.Event
+		}
+	}()
+
+	return &Watcher{event, watcher.Error}
+}
+
+func startWebServer() {
+	if *webServer != "" {
+		go func() {
+			log.Info("Starting web server on port", *webServer)
+			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*targetDir)))
+			if err != nil {
+				log.Fatal("Error starting web server:", err)(2)
+			}
+		}()
+	}
+}
+
+func configSetup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	flag.Usage = func() {
@@ -109,67 +255,4 @@ func main() {
 		targetDir = &cwd
 	}
 	log.Debug("Target dir:", *targetDir)
-
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		panic(err)
-	}
-	defer watcher.Close()
-
-	watchDir := func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			return nil
-		}
-
-		log.Debug("Watching dir:", path)
-
-		if err != nil {
-			log.Err("Skipping dir:", path, err)
-			return filepath.SkipDir
-		}
-
-		err = watcher.Watch(path)
-		if err != nil {
-			panic(err)
-		}
-
-		return nil
-	}
-
-	if *recursive == true {
-		err = filepath.Walk(*targetDir, watchDir)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		err = watcher.Watch(*targetDir)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if *webServer != "" {
-		go func() {
-			log.Info("Starting web server on port", *webServer)
-			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*targetDir)))
-			if err != nil {
-				log.Fatal("Error starting web server:", err)(2)
-			}
-		}()
-	}
-
-	// To facilitate testing (which sends artifical events from a timer),
-	// we have an abstracted struct Watcher that holds the applicable channels.
-	// fsnotify.FileEvent is a fmt.Stringer, but channels cannot be converted.
-	// Unfortunately, an extra channel is necessary to perform the conversion.
-	event := make(chan fmt.Stringer)
-	go func() {
-		for {
-			event <- <-watcher.Event
-		}
-	}()
-	machine = NewMachine(&Watcher{event, watcher.Error})
-	go machine.RunHandler()
-
-	select {}
 }

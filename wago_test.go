@@ -56,8 +56,7 @@ func TestFsRace(t *testing.T) {
 		}
 	}()
 
-	machine = NewMachine(watcher)
-	go machine.RunHandler()
+	go runChain(watcher)
 
 	// should not take more than a second to hit a race if it exists
 	// but we also want to see our buildCmd output
@@ -77,8 +76,7 @@ func TestDaemon(t *testing.T) {
 		watcher.SendCreate()
 	}()
 
-	machine = NewMachine(watcher)
-	go machine.RunHandler()
+	go runChain(watcher)
 
 	time.Sleep(time.Duration(8 * time.Second))
 }
@@ -98,8 +96,7 @@ func TestDaemonTimer(t *testing.T) {
 		watcher.SendCreate()
 	}()
 
-	machine = NewMachine(watcher)
-	go machine.RunHandler()
+	go runChain(watcher)
 
 	time.Sleep(time.Duration(8 * time.Second))
 }
