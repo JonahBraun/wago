@@ -56,6 +56,8 @@ func main() {
 	// the following function calls merely serve to logically organize what
 	// is otherwise a VERY lengthy setup
 
+	// TODO: have configSetup return a config object so that the reliance on
+	// config globals is removed
 	configSetup()
 
 	startWebServer()
@@ -93,8 +95,11 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 
 	// main loop
 	for {
-		// disposable, single use channel
+		// all channels of struct{} are disposable, single use
+		// kill is passed to all Runnable so they know when they should exit
 		kill := make(chan struct{})
+		// abort is to single the event loop that a Runnable did not succeed so cancel everything
+		abort := make(chan struct{})
 
 		var drain func()
 		drain = func() {
@@ -107,6 +112,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 		}
 		drain()
 
+		// event loop
 		go func() {
 			for {
 				select {
@@ -120,6 +126,9 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 					}
 				case err = <-watcher.Error:
 					log.Fatal("Watcher error:", err)(5)
+				case <-abort:
+					close(kill)
+					return
 				case <-quit:
 					// currently only used by test suite
 					close(kill)
@@ -139,7 +148,12 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			}()
 
 			select {
-			case <-done:
+			case d := <-done:
+				if !d {
+					// Runnable failed it's success metric
+					close(abort)
+					break RunLoop
+				}
 			case <-kill:
 				break RunLoop
 			}

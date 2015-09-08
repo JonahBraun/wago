@@ -70,12 +70,13 @@ func TestEventRace(t *testing.T) {
 	}()
 
 	runChain(watcher, quit)
+	*buildCmd = ""
 }
 
 func TestDaemon(t *testing.T) {
 	announceTest("TestDaemon")
 
-	*daemonCmd = "sleep 1s && echo testdaemonOut1 && sleep 5s && echo testdaemonOut2"
+	*daemonCmd = "sleep 1s && echo testdaemonOut1 && sleep 2s && echo testdaemonOut2"
 	watcher := NewFakeWatcher()
 
 	quit := make(chan struct{})
@@ -84,17 +85,18 @@ func TestDaemon(t *testing.T) {
 		watcher.SendCreate()
 		time.Sleep(time.Duration(2 * time.Second))
 		watcher.SendCreate()
-		time.Sleep(time.Duration(2 * time.Second))
+		time.Sleep(time.Duration(4 * time.Second))
 		close(quit)
 	}()
 
 	runChain(watcher, quit)
+	*daemonCmd = ""
 }
 
 func TestDaemonTimer(t *testing.T) {
 	announceTest("TestDaemonTimer")
 
-	*daemonCmd = "sleep 1s && echo testdaemontimerOut1 && sleep 5s && echo testdaemontimerOut2"
+	*daemonCmd = "sleep 1s && echo testdaemontimerOut1 && sleep 2s && echo testdaemontimerOut2"
 	*daemonTimer = 2 * int(time.Second)
 
 	watcher := NewFakeWatcher()
@@ -105,9 +107,11 @@ func TestDaemonTimer(t *testing.T) {
 		watcher.SendCreate()
 		time.Sleep(time.Duration(4 * time.Second))
 		watcher.SendCreate()
-		time.Sleep(time.Duration(2 * time.Second))
+		time.Sleep(time.Duration(4 * time.Second))
 		close(quit)
 	}()
 
 	runChain(watcher, quit)
+	*daemonCmd = ""
+	*daemonTimer = 0
 }
