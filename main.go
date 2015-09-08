@@ -91,22 +91,38 @@ func runChain(watcher *Watcher) {
 
 	// main loop
 	for {
+		// disposable, single use channel
 		kill := make(chan struct{})
 
-		go func() {
+		var drain func()
+		drain = func() {
 			select {
 			case ev := <-watcher.Event:
-				if eventRegex.MatchString(ev.String()) {
-					log.Info("Matched event:", ev.String())
-					close(kill)
-				} else {
-					log.Debug("Ignored event:", ev.String())
+				log.Debug("Extra event ignored:", ev.String())
+				drain()
+			default:
+			}
+		}
+		drain()
+
+		go func() {
+			for {
+				select {
+				case ev := <-watcher.Event:
+					if eventRegex.MatchString(ev.String()) {
+						log.Info("Matched event:", ev.String())
+						close(kill)
+						return
+					} else {
+						log.Debug("Ignored event:", ev.String())
+					}
+				case err = <-watcher.Error:
+					log.Fatal("Watcher error:", err)(5)
 				}
-			case err = <-watcher.Error:
-				log.Fatal("Watcher error:", err)(5)
 			}
 		}()
 
+	RunLoop:
 		for _, runnable := range chain {
 			done, dead := runnable(kill)
 			wg.Add(1)
@@ -119,9 +135,12 @@ func runChain(watcher *Watcher) {
 			select {
 			case <-done:
 			case <-kill:
-				break
+				break RunLoop
 			}
 		}
+
+		// ensure an event has occured, we may be here because all runnables completed
+		<-kill
 
 		// ensure all runnables (procs) are dead before restarting the chain
 		wg.Wait()
@@ -133,7 +152,6 @@ func newWatcher() *Watcher {
 	if err != nil {
 		panic(err)
 	}
-	defer watcher.Close()
 
 	watchDir := func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {

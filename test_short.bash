@@ -1,8 +1,8 @@
 #!/bin/bash
 
 simulate_change() {
-	sleep 1
-	touch tmp.1 && touch tmp.2 && touch tmp.3 && touch tmp.4 && touch tmp.5
+	sleep 2
+	touch tmp.1 && touch tmp.2 && touch tmp.3 && touch tmp.4 && touch tmp.5 && touch tmp.6
 	rm tmp.*
 
 	sleep 2
