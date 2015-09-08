@@ -136,8 +136,8 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			wg.Add(1)
 
 			go func() {
-				<-dead
 				wg.Done()
+				<-dead
 			}()
 
 			select {

@@ -40,10 +40,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestFsRace(t *testing.T) {
-	announceTest("TestFsRace")
+func TestEventRace(t *testing.T) {
+	announceTest("TestEventRace")
 
-	*buildCmd = "sleep 1 && echo foo"
+	*buildCmd = "echo echonow"
 
 	watcher := NewFakeWatcher()
 
@@ -60,14 +60,12 @@ func TestFsRace(t *testing.T) {
 
 			watcher.Event <- FakeEvent(`"/tmp/fake.txt": CREATE`)
 			time.Sleep(duration)
-			duration = duration * 2
+			duration += 10
 		}
 	}()
 
 	go func() {
-		// should not take more than a second to hit a race if it exists
-		// but we also want to see our buildCmd output
-		time.Sleep(time.Duration(2 * time.Second))
+		time.Sleep(time.Duration(1 * time.Second))
 		close(quit)
 	}()
 
@@ -77,7 +75,7 @@ func TestFsRace(t *testing.T) {
 func TestDaemon(t *testing.T) {
 	announceTest("TestDaemon")
 
-	*daemonCmd = "sleep 1s && echo foo && sleep 5s && echo done"
+	*daemonCmd = "sleep 1s && echo testdaemonOut1 && sleep 5s && echo testdaemonOut2"
 	watcher := NewFakeWatcher()
 
 	quit := make(chan struct{})
@@ -96,7 +94,7 @@ func TestDaemon(t *testing.T) {
 func TestDaemonTimer(t *testing.T) {
 	announceTest("TestDaemonTimer")
 
-	*daemonCmd = "sleep 1s && echo foo && sleep 5s && echo done"
+	*daemonCmd = "sleep 1s && echo testdaemontimerOut1 && sleep 5s && echo testdaemontimerOut2"
 	*daemonTimer = 2 * int(time.Second)
 
 	watcher := NewFakeWatcher()

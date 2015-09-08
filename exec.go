@@ -10,6 +10,7 @@ import (
 
 type Cmd struct {
 	*exec.Cmd
+	Name string
 	done chan bool
 	dead chan struct{}
 }
@@ -18,7 +19,9 @@ func NewCmd(command string) *Cmd {
 	return &Cmd{
 		// -c is the POSIX switch to run a command
 		Cmd:  exec.Command(*shell, "-c", command),
-		done: make(chan bool),
+		Name: command,
+		// send on done must always succeed so the Runnable can proceed to cleanup
+		done: make(chan bool, 1),
 		dead: make(chan struct{}),
 	}
 }
@@ -76,28 +79,21 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 	<-proc
 }
 
+// This should only be called from within the Runnable
+// which ensures that the process has started and so can be killed
 func (cmd *Cmd) Kill() {
-	// return if:
-	// command was never created,
-	// command failed to start (PID is nil)
-	// the command has finished (ProcessState is set)
-	if cmd == nil || cmd.Process == nil || cmd.ProcessState != nil {
-		//if cmd == nil || cmd.ProcessState != nil {
-		return
-	}
-
 	if *exitWait < 1 {
-		log.Info("Killing ("+cmd.Path+"), pid", cmd.Process)
+		log.Info("Killing command:", cmd.Name)
 		if err := cmd.Process.Kill(); err != nil {
-			log.Err("Failed to kill command ("+cmd.Path+"), error:", err)
+			log.Err("Failed to kill command ("+cmd.Name+"), error:", err)
 		}
 		return
 	}
 
-	log.Info("Sending exit signal (SIGINT) to command ("+cmd.Path+"), pid:", cmd.Process)
+	log.Info("Sending exit signal (SIGINT) to command:", cmd.Name)
 
 	if err := cmd.Process.Signal(syscall.SIGINT); err != nil {
-		log.Err("Failed to kill command ("+cmd.Path+"):", err)
+		log.Err("Failed to kill command ("+cmd.Name+"):", err)
 		return
 	}
 
@@ -107,9 +103,9 @@ func (cmd *Cmd) Kill() {
 		return
 	}
 
-	log.Info("Command ("+cmd.Path+") still alive, killing pid", cmd.Process)
+	log.Info("Command still alive, killing…")
 	if err := cmd.Process.Kill(); err != nil {
-		log.Err("Failed to kill command ("+cmd.Path+"):", err)
+		log.Err("Failed to kill command ("+cmd.Name+"):", err)
 	}
 }
 
