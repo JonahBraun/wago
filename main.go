@@ -56,8 +56,6 @@ func main() {
 	// the following function calls merely serve to logically organize what
 	// is otherwise a VERY lengthy setup
 
-	announce()
-
 	configSetup()
 
 	startWebServer()
