@@ -34,7 +34,8 @@ var (
 	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively.")
 	targetDir     = flag.String("dir", "", "Directory to watch, defaults to current.")
 	url           = flag.String("url", "", "Open browser to this URL after all commands are successful.")
-	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "Regex to match watch event, use -v to see all events.")
+	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY)`, "React to FS events matching regex. Use -v to see all events.")
+	ignoreRegex   = flag.String("ignore", `\.(git|hg|svn)`, "Ignore directories matching regex.")
 	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
 	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
 )
@@ -167,18 +168,27 @@ func newWatcher() *Watcher {
 		panic(err)
 	}
 
+	ignore, err := regexp.Compile(*ignoreRegex)
+	if err != nil {
+		log.Fatal("Ignore regex compile error:", err)(1)
+	}
+
 	watchDir := func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
 			return nil
 		}
 
-		log.Debug("Watching dir:", path)
-
 		if err != nil {
-			log.Err("Skipping dir:", path, err)
+			log.Err("Error reading dir, skipping:", path, err)
 			return filepath.SkipDir
 		}
 
+		if ignore.MatchString(path) {
+			log.Debug("Ignoring dir:", path)
+			return filepath.SkipDir
+		}
+
+		log.Debug("Watching dir:", path)
 		err = watcher.Watch(path)
 		if err != nil {
 			panic(err)
