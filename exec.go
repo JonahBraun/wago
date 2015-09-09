@@ -210,7 +210,6 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 		close(proc)
 	}()
 
-	stop := false
 	key := []byte(trigger)
 	match := make(chan struct{})
 
@@ -220,12 +219,14 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 
 		for {
 			// check if the trigger has been pulled and shift to copy mode
-			if stop {
+			select {
+			case <-match:
 				_, err := io.Copy(out, in)
 				if err != nil {
 					log.Err("Unwatched pipe has errored:", err)
 				}
 				return
+			default:
 			}
 
 			n, err := in.Read(b)
@@ -235,7 +236,6 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 					spot++
 					if spot == len(key) {
 						log.Debug("Trigger match")
-						stop = true
 						close(match)
 					}
 				}
