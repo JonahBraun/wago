@@ -62,6 +62,7 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 	}()
 
 	select {
+	// to ensure we pick up this error, the first receive on proc must be done in this select
 	case err := <-proc:
 		if err != nil {
 			log.Err("Command error:", err)
@@ -70,7 +71,7 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 			cmd.done <- true
 		}
 	case <-kill:
-		cmd.Kill()
+		cmd.Kill(proc)
 	}
 
 	// we can not return until the process has exited
@@ -81,7 +82,7 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 
 // This should only be called from within the Runnable
 // which ensures that the process has started and so can be killed
-func (cmd *Cmd) Kill() {
+func (cmd *Cmd) Kill(proc chan error) {
 	if *exitWait < 1 {
 		log.Info("Killing command:", cmd.Name)
 		if err := cmd.Process.Kill(); err != nil {
@@ -97,10 +98,12 @@ func (cmd *Cmd) Kill() {
 		return
 	}
 
-	// give the process time to cleanup, check again if it has finished (ProcessState is set)
+	// give the process time to cleanup, check if process has exited
 	time.Sleep(time.Duration(*exitWait) * time.Millisecond)
-	if cmd.ProcessState != nil {
+	select {
+	case <-proc:
 		return
+	default:
 	}
 
 	log.Info("Command still alive, killing…")
@@ -162,7 +165,7 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 			cmd.done <- true
 		}
 	case <-kill:
-		cmd.Kill()
+		cmd.Kill(proc)
 	}
 
 	// we can not return until the process has exited
@@ -263,7 +266,7 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 			cmd.done <- true
 		}
 	case <-kill:
-		cmd.Kill()
+		cmd.Kill(proc)
 	}
 
 	// we can not return until the process has exited
