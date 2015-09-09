@@ -91,8 +91,6 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 		// all channels of struct{} are disposable, single use
 		// kill is passed to all Runnable so they know when they should exit
 		kill := make(chan struct{})
-		// abort is to single the event loop that a Runnable did not succeed so cancel everything
-		abort := make(chan struct{})
 
 		var drain func()
 		drain = func() {
@@ -119,9 +117,6 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 					}
 				case err = <-watcher.Error:
 					log.Fatal("Watcher error:", err)(5)
-				case <-abort:
-					close(kill)
-					return
 				case <-quit:
 					// currently only used by test suite
 					close(kill)
@@ -143,8 +138,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			select {
 			case d := <-done:
 				if !d {
-					// Runnable failed it's success metric
-					close(abort)
+					// Runnable's success metric failed, break out of the chain
 					break RunLoop
 				}
 			case <-kill:
