@@ -191,21 +191,19 @@ func newWatcher() *Watcher {
 		log.Debug("Watching dir:", path)
 		err = watcher.Watch(path)
 		if err != nil {
-			panic(err)
+			log.Err("Error watching dir (path, error):", path, err)
 		}
 
 		return nil
 	}
 
 	if *recursive == true {
-		err = filepath.Walk(*targetDir, watchDir)
-		if err != nil {
-			panic(err)
-		}
+		// errors are handled in watchDir
+		filepath.Walk(*targetDir, watchDir)
 	} else {
 		err = watcher.Watch(*targetDir)
 		if err != nil {
-			panic(err)
+			log.Fatal("Error watching dir (path, error):", *targetDir, err)(1)
 		}
 	}
 
