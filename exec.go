@@ -139,18 +139,24 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 		close(proc)
 	}()
 
-	log.Debug("Waiting miliseconds:", period)
 	timerDone := make(chan struct{})
-	timer := time.AfterFunc(time.Duration(period)*time.Millisecond, func() {
-		close(timerDone)
-	})
+
+	var timer *time.Timer
+	if period > 0 {
+		log.Debug("Waiting miliseconds:", period)
+		timer = time.AfterFunc(time.Duration(period)*time.Millisecond, func() {
+			close(timerDone)
+		})
+	}
 
 	select {
 	case <-timerDone:
 		log.Debug("Daemon timer done")
 		cmd.done <- true
 	case err := <-proc:
-		timer.Stop()
+		if period > 0 {
+			timer.Stop()
+		}
 		if err != nil {
 			log.Err("Daemon error:", err)
 			cmd.done <- false
