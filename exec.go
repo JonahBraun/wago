@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -13,10 +14,14 @@ type Cmd struct {
 	Name string
 	done chan bool
 	dead chan struct{}
+
+	Stdin  io.WriteCloser
+	Stdout io.ReadCloser
+	Stderr io.ReadCloser
 }
 
 func NewCmd(command string) *Cmd {
-	return &Cmd{
+	cmd := &Cmd{
 		// -c is the POSIX switch to run a command
 		Cmd:  exec.Command(*shell, "-c", command),
 		Name: command,
@@ -24,6 +29,27 @@ func NewCmd(command string) *Cmd {
 		done: make(chan bool, 1),
 		dead: make(chan struct{}),
 	}
+
+	// give process a new process group so we can kill it's child processes (if any)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
+
+	var err error
+	cmd.Stdin, err = cmd.StdinPipe()
+	if err != nil {
+		log.Fatal("Error making stdin (command, error):", cmd.Name, err)(9)
+	}
+	cmd.Stdout, err = cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal("Error making stdout (command, error):", cmd.Name, err)(9)
+	}
+	cmd.Stderr, err = cmd.StderrPipe()
+	if err != nil {
+		log.Fatal("Error making stderr (command, error):", cmd.Name, err)(9)
+	}
+
+	return cmd
 }
 
 type Runnable func(chan struct{}) (chan bool, chan struct{})
@@ -40,13 +66,24 @@ func NewRunWait(command string) Runnable {
 	}
 }
 
+// we used to do
+// cmd.Stdin = os.Stdin
+// but that simple method does not work for child processes in process groups
+func copyPipe(in io.Reader, out io.Writer, wg *sync.WaitGroup) {
+	wg.Add(1)
+
+	go func() {
+		_, err := io.Copy(out, in)
+		if err != nil {
+			log.Err("I/O pipe has errored:", err)
+		}
+		wg.Done()
+	}()
+}
+
 func (cmd *Cmd) RunWait(kill chan struct{}) {
 	defer close(cmd.done)
 	defer close(cmd.dead)
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
 	err := cmd.Start()
 	if err != nil {
@@ -57,6 +94,13 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 
 	proc := make(chan error)
 	go func() {
+		var wg sync.WaitGroup
+
+		copyPipe(os.Stdin, cmd.Stdin, &wg)
+		copyPipe(cmd.Stdout, os.Stdout, &wg)
+		copyPipe(cmd.Stderr, os.Stderr, &wg)
+		wg.Wait()
+
 		proc <- cmd.Wait()
 		close(proc)
 	}()
@@ -83,31 +127,39 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 // This should only be called from within the Runnable
 // which ensures that the process has started and so can be killed
 func (cmd *Cmd) Kill(proc chan error) {
-	if *exitWait < 1 {
-		log.Info("Killing command:", cmd.Name)
-		if err := cmd.Process.Kill(); err != nil {
-			log.Err("Failed to kill command ("+cmd.Name+"), error:", err)
+	log.Info("Sending signal SIGTERM to command:", cmd.Name)
+
+	pgid, err := syscall.Getpgid(cmd.Process.Pid)
+	if err != nil {
+		if err.Error() == "no such process" {
+			log.Info("Process exited before SIGTERM:", cmd.Name)
+		} else {
+			log.Err("Error getting process group:", err)
 		}
 		return
 	}
 
-	log.Info("Sending exit signal (SIGINT) to command:", cmd.Name)
-
-	if err := cmd.Process.Signal(syscall.SIGINT); err != nil {
-		log.Err("Failed to kill command ("+cmd.Name+"):", err)
+	if err := syscall.Kill(pgid, syscall.SIGTERM); err != nil {
+		log.Warn("Failed to send SIGTERM, command must have exited (name, error):", cmd.Name, err)
 		return
 	}
 
-	// give the process time to cleanup, check if process has exited
-	time.Sleep(time.Duration(*exitWait) * time.Millisecond)
+	// give process time to exit…
+	timerDone := make(chan struct{})
+	timer := time.AfterFunc(time.Duration(*exitWait)*time.Millisecond, func() {
+		close(timerDone)
+	})
+
 	select {
+	case <-timerDone:
 	case <-proc:
+		timer.Stop()
 		return
 	default:
 	}
 
-	log.Info("Command still alive, killing…")
-	if err := cmd.Process.Kill(); err != nil {
+	log.Info("After exitwait, command still, sending SIGKILL…")
+	if err := syscall.Kill(pgid, syscall.SIGKILL); err != nil {
 		log.Err("Failed to kill command ("+cmd.Name+"):", err)
 	}
 }
@@ -127,10 +179,6 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 	defer close(cmd.done)
 	defer close(cmd.dead)
 
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
 	err := cmd.Start()
 	if err != nil {
 		log.Fatal("Error starting daemon:", err)(7)
@@ -138,15 +186,21 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 
 	proc := make(chan error)
 	go func() {
+		var wg sync.WaitGroup
+
+		copyPipe(os.Stdin, cmd.Stdin, &wg)
+		copyPipe(cmd.Stdout, os.Stdout, &wg)
+		copyPipe(cmd.Stderr, os.Stderr, &wg)
+		wg.Wait()
+
 		proc <- cmd.Wait()
 		close(proc)
 	}()
 
 	timerDone := make(chan struct{})
 
-	var timer *time.Timer
 	log.Debug("Waiting miliseconds:", period)
-	timer = time.AfterFunc(time.Duration(period)*time.Millisecond, func() {
+	timer := time.AfterFunc(time.Duration(period)*time.Millisecond, func() {
 		close(timerDone)
 	})
 
@@ -188,24 +242,18 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 	defer close(cmd.done)
 	defer close(cmd.dead)
 
-	cmd.Stdin = os.Stdin
-
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Fatal("Error opening stdout:", err)(8)
-	}
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		log.Fatal("Error opening stderr:", err)(8)
-	}
-
-	err = cmd.Start()
+	err := cmd.Start()
 	if err != nil {
 		log.Fatal("Error starting daemon:", err)(7)
 	}
 
 	proc := make(chan error)
 	go func() {
+		var wg sync.WaitGroup
+
+		copyPipe(os.Stdin, cmd.Stdin, &wg)
+		wg.Wait()
+
 		proc <- cmd.Wait()
 		close(proc)
 	}()
@@ -249,8 +297,8 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 		}
 	}
 
-	go watchPipe(stdoutPipe, os.Stdout)
-	go watchPipe(stderrPipe, os.Stderr)
+	go watchPipe(cmd.Stdout, os.Stdout)
+	go watchPipe(cmd.Stderr, os.Stderr)
 
 	select {
 	case <-match:

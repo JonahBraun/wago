@@ -40,6 +40,39 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestSimple(t *testing.T) {
+	announceTest("TestSimple")
+
+	*buildCmd = "echo testsimple"
+
+	watcher := NewFakeWatcher()
+
+	quit := make(chan struct{})
+
+	go func() {
+		duration := time.Duration(1) * time.Second
+		for {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+
+			watcher.Event <- FakeEvent(`"/tmp/fake.txt": CREATE`)
+			time.Sleep(duration)
+			duration += time.Second
+		}
+	}()
+
+	go func() {
+		time.Sleep(time.Duration(3 * time.Second))
+		close(quit)
+	}()
+
+	runChain(watcher, quit)
+	*buildCmd = ""
+}
+
 func TestEventRace(t *testing.T) {
 	announceTest("TestEventRace")
 

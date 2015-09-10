@@ -1,7 +1,7 @@
 // Wago (Watch, Go)
 // A general purpose watch / build development tool.
 
-// TODO: catch SIGINT and send dog.TR to ensure a clean term
+// TODO: catch SIGINT and reset term
 // see https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
 
 package main
@@ -28,7 +28,7 @@ var (
 	daemonCmd     = flag.String("daemon", "", "Run command and leave running in the background.")
 	daemonTimer   = flag.Int("timer", 0, "Wait miliseconds after starting daemon, then continue.")
 	daemonTrigger = flag.String("trigger", "", "Wait for daemon to output this string, then continue.")
-	exitWait      = flag.Int("exitwait", 0, "If 0, kills processes immediately, if >0, sends SIGINT and waits X ms for process to exit before killing.")
+	exitWait      = flag.Int("exitwait", 50, "Max miliseconds a process has after a SIGTERM to exit before a SIGKILL.")
 	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode! Start a web server, open browser to URL of targetDir/index.html")
 	postCmd       = flag.String("pcmd", "", "Run command after daemon starts. Use this to kick off your test suite.")
 	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively.")
