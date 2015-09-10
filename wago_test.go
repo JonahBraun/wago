@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 	announceTest = dog.CreateLog(dog.FgYellow, "")
 	flag.Parse()
 
-	// essential setup commands
+	// essential setup
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	*shell = "/bin/sh"
 

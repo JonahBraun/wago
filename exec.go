@@ -36,6 +36,7 @@ func NewCmd(command string) *Cmd {
 	}
 
 	var err error
+
 	cmd.Stdin, err = cmd.StdinPipe()
 	if err != nil {
 		log.Fatal("Error making stdin (command, error):", cmd.Name, err)(9)
@@ -96,7 +97,6 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 	go func() {
 		var wg sync.WaitGroup
 
-		copyPipe(os.Stdin, cmd.Stdin, &wg)
 		copyPipe(cmd.Stdout, os.Stdout, &wg)
 		copyPipe(cmd.Stderr, os.Stderr, &wg)
 		wg.Wait()
@@ -247,17 +247,6 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 		log.Fatal("Error starting daemon:", err)(7)
 	}
 
-	proc := make(chan error)
-	go func() {
-		var wg sync.WaitGroup
-
-		copyPipe(os.Stdin, cmd.Stdin, &wg)
-		wg.Wait()
-
-		proc <- cmd.Wait()
-		close(proc)
-	}()
-
 	key := []byte(trigger)
 	match := make(chan struct{})
 
@@ -297,8 +286,28 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 		}
 	}
 
-	go watchPipe(cmd.Stdout, os.Stdout)
-	go watchPipe(cmd.Stderr, os.Stderr)
+	proc := make(chan error)
+	go func() {
+		var wg sync.WaitGroup
+
+		copyPipe(os.Stdin, cmd.Stdin, &wg)
+		wg.Add(2)
+		go func() {
+			watchPipe(cmd.Stdout, os.Stdout)
+			wg.Done()
+		}()
+		go func() {
+			watchPipe(cmd.Stderr, os.Stderr)
+			wg.Done()
+		}()
+
+		wg.Wait()
+
+		unsubStdin <- cmd
+
+		proc <- cmd.Wait()
+		close(proc)
+	}()
 
 	select {
 	case <-match:
