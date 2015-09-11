@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 )
 
 func NewBrowser(url string) Runnable {
@@ -27,7 +28,7 @@ func (cmd *Cmd) RunBrowser() {
 	defer close(cmd.done)
 	defer close(cmd.dead)
 
-	log.Info("Opening url (OS agnostic, this may not work):", cmd.url)
+	log.Info("Opening url (OS agnostic, this may not work):", cmd.Name)
 
 	output, err := cmd.CombinedOutput()
 
