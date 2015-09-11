@@ -36,7 +36,6 @@ func NewCmd(command string) *Cmd {
 	}
 
 	var err error
-
 	cmd.Stdin, err = cmd.StdinPipe()
 	if err != nil {
 		log.Fatal("Error making stdin (command, error):", cmd.Name, err)(9)
@@ -97,9 +96,12 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 	go func() {
 		var wg sync.WaitGroup
 
+		subStdin <- cmd
 		copyPipe(cmd.Stdout, os.Stdout, &wg)
 		copyPipe(cmd.Stderr, os.Stderr, &wg)
 		wg.Wait()
+
+		unsubStdin <- cmd
 
 		proc <- cmd.Wait()
 		close(proc)
@@ -188,10 +190,12 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 	go func() {
 		var wg sync.WaitGroup
 
-		copyPipe(os.Stdin, cmd.Stdin, &wg)
+		subStdin <- cmd
 		copyPipe(cmd.Stdout, os.Stdout, &wg)
 		copyPipe(cmd.Stderr, os.Stderr, &wg)
 		wg.Wait()
+
+		unsubStdin <- cmd
 
 		proc <- cmd.Wait()
 		close(proc)
@@ -208,6 +212,20 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 	case <-timerDone:
 		log.Debug("Daemon timer done")
 		cmd.done <- true
+		// timer is done, but we still need to wait for an exit/kill
+		select {
+		case err := <-proc:
+			if err != nil {
+				log.Err("Daemon error:", err)
+				cmd.done <- false
+			} else {
+				// A daemon probably shouldn't be exiting
+				log.Warn("Daemon exited cleanly")
+				cmd.done <- true
+			}
+		case <-kill:
+			cmd.Kill(proc)
+		}
 	case err := <-proc:
 		timer.Stop()
 		if err != nil {
@@ -219,6 +237,7 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 			cmd.done <- true
 		}
 	case <-kill:
+		timer.Stop()
 		cmd.Kill(proc)
 	}
 
@@ -290,7 +309,7 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 	go func() {
 		var wg sync.WaitGroup
 
-		copyPipe(os.Stdin, cmd.Stdin, &wg)
+		subStdin <- cmd
 		wg.Add(2)
 		go func() {
 			watchPipe(cmd.Stdout, os.Stdout)
@@ -302,7 +321,6 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 		}()
 
 		wg.Wait()
-
 		unsubStdin <- cmd
 
 		proc <- cmd.Wait()
@@ -313,6 +331,20 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 	case <-match:
 		log.Debug("Daemon trigger matched")
 		cmd.done <- true
+		// still need to wait for proc to exit/kill
+		select {
+		case err := <-proc:
+			if err != nil {
+				log.Err("Daemon error:", err)
+				cmd.done <- false
+			} else {
+				// A daemon probably shouldn't be exiting
+				log.Warn("Daemon exited cleanly")
+				cmd.done <- true
+			}
+		case <-kill:
+			cmd.Kill(proc)
+		}
 	case err := <-proc:
 		if err != nil {
 			log.Err("Daemon error:", err)

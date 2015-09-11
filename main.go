@@ -55,6 +55,8 @@ func main() {
 
 	startWebServer()
 
+	ManageStdin()
+
 	runChain(newWatcher(), make(chan struct{}))
 }
 
