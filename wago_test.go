@@ -76,6 +76,10 @@ func TestSimple(t *testing.T) {
 }
 
 func TestEventRace(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	announceTest("TestEventRace")
 
 	*buildCmd = "echo echonow"
