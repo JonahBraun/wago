@@ -23,7 +23,7 @@ wago -q -dir=lib -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:
 ```bash
 wago -dir sass/ -cmd 'compass compile' -url 'http://localhost:8080/somewhere.html'
 ```
-* Recursively develop Wago!:
+* Recursively develop Wago!
 ```bash
 wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'
 ```
@@ -31,8 +31,6 @@ wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp 
 ```bash
 wago -fiddle
 ```
-
-Some of these commands can get long, it's advised to put common Wago commands in a script or makefile.
 
 ## Install
 Go (golang), requires Go 1.5+: `go get github.com/JonahBraun/wago`
