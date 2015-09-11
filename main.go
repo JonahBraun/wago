@@ -173,7 +173,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 		// check if we should quit
 		select {
 		case <-quit:
-			log.Warn("Quitting run chain")
+			log.Debug("Quitting main event/action loop")
 			return
 		default:
 		}

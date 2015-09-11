@@ -17,7 +17,13 @@ func ManageStdin() {
 		for {
 			_, err = os.Stdin.Read(p)
 			if err != nil {
-				log.Fatal("Error reading stdin:", err)(10)
+				if err.Error() == "EOF" {
+					log.Warn("EOF reading stdin, input will not be connected to processes.")
+					log.Warn("You should only see this if you are running go test!")
+					return
+				} else {
+					log.Fatal("Error reading stdin.", err)(10)
+				}
 			}
 			termIn <- p
 			// wait for the write to occur, otherwise there is a race condition
