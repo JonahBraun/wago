@@ -35,9 +35,9 @@ wago -fiddle
 ## Install
 Go (golang), requires Go 1.5+: `go get github.com/JonahBraun/wago`
 
-Mac OS X, Intel (amd64): Binary to be posted soon.
+Mac OS X, Intel (darwin/amd64): [Download from the Releases page](https://github.com/JonahBraun/wago/releases)
 
-Linux (amd64): Binary to be posted soon.
+Linux (amd64): [Download from the Releases page](https://github.com/JonahBraun/wago/releases)
 
 # How it Works
 ### Action Chain
