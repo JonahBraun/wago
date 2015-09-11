@@ -157,10 +157,9 @@ func (cmd *Cmd) Kill(proc chan error) {
 	case <-proc:
 		timer.Stop()
 		return
-	default:
 	}
 
-	log.Info("After exitwait, command still, sending SIGKILL…")
+	log.Info("After exitwait, command still running, sending SIGKILL…")
 	if err := syscall.Kill(pgid, syscall.SIGKILL); err != nil {
 		log.Err("Failed to kill command ("+cmd.Name+"):", err)
 	}
