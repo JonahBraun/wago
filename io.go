@@ -18,8 +18,7 @@ func ManageStdin() {
 			_, err = os.Stdin.Read(p)
 			if err != nil {
 				if err.Error() == "EOF" {
-					log.Warn("EOF reading stdin, input will not be connected to processes.")
-					log.Warn("You should only see this if you are running go test!")
+					log.Warn("Warning: EOF from stdin, input will not be connected to processes.")
 					return
 				} else {
 					log.Fatal("Error reading stdin.", err)(10)

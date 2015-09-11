@@ -161,7 +161,11 @@ func (cmd *Cmd) Kill(proc chan error) {
 
 	log.Info("After exitwait, command still running, sending SIGKILL…")
 	if err := syscall.Kill(pgid, syscall.SIGKILL); err != nil {
-		log.Err("Failed to kill command ("+cmd.Name+"):", err)
+		if err.Error() == "no such process" {
+			log.Info("Process exited before SIGKILL:", cmd.Name)
+		} else {
+			log.Err("Error killing command (cmd, error):", cmd.Name, err)
+		}
 	}
 }
 
