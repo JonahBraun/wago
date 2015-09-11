@@ -1,4 +1,5 @@
-Do you routinely?:
+**Do you routinely?:**
+
 1. Save your code.
 2. Do something in a terminal (kill a command, run a server) or refresh a browser.
 3. Repeat…
@@ -9,19 +10,28 @@ Then Wago was built for you! Wago<sup>Watch, Go</sup> watches your filesystem an
 * Run a simple Ruby script: `wago -cmd='script.rb'`
 * Run a Ruby script with pry and interact with it: `wago -cmd='pry script.rb'`
 * Watch your **SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results. `wago `
-* Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite:`wago -cmd='go test -race && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'`
-* Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!: `wago -q -dir=lib -exitwait=3 -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'`
-* Recursively develop Wago!: `wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'`
+* Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite:
+
+`wago -cmd='go test -race && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'`
+* Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!:
+
+`wago -q -dir=lib -exitwait=3 -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'`
+* Recursively develop Wago!:
+
+`wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'`
 * Run a **static webserver** in the current directory for a one-off HTML/CSS/JS test page. `wago -fiddle`
 
 ## Install
 Go (golang), requires Go 1.5+: `go get github.com/JonahBraun/wago`
+
 Mac OS X, Intel (amd64): Binary to be posted soon.
+
 Linux (amd64): Binary to be posted soon.
 
 # How it Works
 ### Action Chain
 Actions are run in the following order. All actions are optional but there must be at least one. The chain is stopped if an action fails (exit status >0).
+
 1. -cmd is run and waited to finish.
 1. -daemon is run. If -trigger, chain continues after -daemon outputs the exact trigger string. Otherwise, -timer milliseconds is waited and then the chain continues.
 1. -pcmd is run and waited to finish.
