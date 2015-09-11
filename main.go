@@ -257,7 +257,7 @@ func configSetup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	flag.Usage = func() {
-		fmt.Println("WaGo (Watch, Go) build tool version " + VERSION + ". Usage:")
+		fmt.Println("WaGo (Watch, Go) build tool. Version", VERSION)
 		flag.PrintDefaults()
 	}
 
