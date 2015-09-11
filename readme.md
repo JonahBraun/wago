@@ -11,7 +11,7 @@ WaGo watches your code, then starts a conditional action chain capable of proces
 ```bash
 wago -cmd='ruby script.rb'
 ```
-* Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite.
+* Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom curl test suite.
 ```bash
 wago -cmd='go test -race -short && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'
 ```
