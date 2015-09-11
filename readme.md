@@ -1,36 +1,38 @@
 **Do you routinely?:**
 
 1. Save your code.
-2. Do something in a terminal (kill a command, run a server) or refresh a browser.
+2. Do something in a terminal: kill a command, restart a daemon, wait for stuff to finish successfully, refresh a browser.
 3. Repeat…
 
-Then Wago was built for you! Wago<sup>Watch, Go</sup> watches your filesystem and responds by building, managing server applications, refreshing Chrome and more.
+Wago watches your code and kicks of a conditional action chain capable of process monitoring and management.
 
-## Example Wago Usage
-* Run a Ruby script with pry and interact with it:
+## Example Wago<sup>Watch, Go</sup> Usage
+* Run a Ruby script.
 ```bash
-  wago -cmd='pry script.rb'
+wago -cmd='ruby script.rb'
 ```
-* Watch your **SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results.
+* Watch your **Compass/SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results. `compass watch` will also watch your files, but Wago is orders of magnitude more effecient and so better for laptop battery life.
 ```bash
-  wago
+wago -dir sass/ -cmd 'compass compile' -url 'http://localhost:8080/somewhere.html'
 ```
-* Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite:
+* Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite.
 ```bash
-  wago -cmd='go test -race && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'
+wago -cmd='go test -race -short && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'
 ```
-* Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!:
+* Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!
 ```bash
-  wago -q -dir=lib -exitwait=3 -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'
+wago -q -dir=lib -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'
 ```
 * Recursively develop Wago!:
 ```bash
-  wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'
+wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'
 ```
 * Run a **static webserver** in the current directory for a one-off HTML/CSS/JS test page.
 ```bash
 wago -fiddle
 ```
+
+Some of these commands can get long, it's advised to put common Wago commands in a script or makefile.
 
 ## Install
 Go (golang), requires Go 1.5+: `go get github.com/JonahBraun/wago`
