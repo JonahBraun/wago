@@ -2,18 +2,14 @@
 
 1. Save your code.
 2. Do something in a terminal: kill a command, restart a daemon, wait for stuff to finish successfully, refresh a browser.
-3. Repeat…
+3. *Repeat…*
 
-Wago watches your code and kicks of a conditional action chain capable of process monitoring and management.
+Wago watches your code, then starts a conditional action chain capable of process monitoring and management.
 
 ## Example Wago<sup>Watch, Go</sup> Usage
 * Run a Ruby script.
 ```bash
 wago -cmd='ruby script.rb'
-```
-* Watch your **Compass/SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results. `compass watch` will also watch your files, but Wago is orders of magnitude more effecient and so better for laptop battery life.
-```bash
-wago -dir sass/ -cmd 'compass compile' -url 'http://localhost:8080/somewhere.html'
 ```
 * Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite.
 ```bash
@@ -22,6 +18,10 @@ wago -cmd='go test -race -short && go install -race' -daemon='appName' -timer=35
 * Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!
 ```bash
 wago -q -dir=lib -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'
+```
+* Watch your **Compass/SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results. `compass watch` will also watch your files, but Wago is orders of magnitude more effecient and so better for laptop battery life.
+```bash
+wago -dir sass/ -cmd 'compass compile' -url 'http://localhost:8080/somewhere.html'
 ```
 * Recursively develop Wago!:
 ```bash
