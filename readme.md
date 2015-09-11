@@ -8,27 +8,27 @@ Then Wago was built for you! Wago<sup>Watch, Go</sup> watches your filesystem an
 
 ## Example Wago Usage
 * Run a Ruby script with pry and interact with it:
-```
+```bash
   wago -cmd='pry script.rb'
 ```
 * Watch your **SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results.
-```
+```bash
   wago
 ```
 * Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite:
-```
+```bash
   wago -cmd='go test -race && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'
 ```
 * Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!:
-```
+```bash
   wago -q -dir=lib -exitwait=3 -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'
 ```
 * Recursively develop Wago!:
-```
+```bash
   wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'
 ```
 * Run a **static webserver** in the current directory for a one-off HTML/CSS/JS test page.
-```
+```bash
 wago -fiddle
 ```
 
