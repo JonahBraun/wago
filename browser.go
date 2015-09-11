@@ -9,7 +9,13 @@ import (
 func NewBrowser(url string) Runnable {
 	return func(kill chan struct{}) (chan bool, chan struct{}) {
 		command := fmt.Sprintf("google-chrome \"%s\"", url)
-		cmd := NewCmd(command)
+
+		cmd := &Cmd{
+			Cmd:  exec.Command(command),
+			Name: url,
+			done: make(chan bool, 1),
+			dead: make(chan struct{}),
+		}
 
 		go cmd.RunBrowser()
 

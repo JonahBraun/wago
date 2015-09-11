@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
 )
 
 var chromeApplescript = `
@@ -42,7 +43,12 @@ var chromeApplescript = `
 
 func NewBrowser(url string) Runnable {
 	return func(kill chan struct{}) (chan bool, chan struct{}) {
-		cmd := NewCmd("osascript")
+		cmd := &Cmd{
+			Cmd:  exec.Command("osascript"),
+			Name: url,
+			done: make(chan bool, 1),
+			dead: make(chan struct{}),
+		}
 
 		go cmd.RunBrowser(url)
 
