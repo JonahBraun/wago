@@ -7,10 +7,6 @@
 Then Wago was built for you! Wago<sup>Watch, Go</sup> watches your filesystem and responds by building, managing server applications, refreshing Chrome and more.
 
 ## Example Wago Usage
-* Run a simple Ruby script:
-```
-wago -cmd='script.rb'
-```
 * Run a Ruby script with pry and interact with it:
 ```
   wago -cmd='pry script.rb'
