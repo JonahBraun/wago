@@ -13,6 +13,7 @@ import (
 	"github.com/howeyc/fsnotify"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -57,7 +58,23 @@ func main() {
 
 	ManageStdin()
 
-	runChain(newWatcher(), make(chan struct{}))
+	runChain(newWatcher(), catchSignals())
+}
+
+func catchSignals() chan struct{} {
+	// quit needs to inform multiple receivers, sig can't do that
+	quit := make(chan struct{})
+	sig := make(chan os.Signal, 1)
+
+	// TODO add SIGTERM to this (need OS conditional)
+	signal.Notify(sig, os.Interrupt, os.Kill)
+
+	go func() {
+		<-sig
+		close(quit)
+	}()
+
+	return quit
 }
 
 // event loop and action chain happen here
@@ -120,7 +137,6 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 				case err = <-watcher.Error:
 					log.Fatal("Watcher error:", err)(5)
 				case <-quit:
-					// currently only used by test suite
 					close(kill)
 					return
 				}
@@ -154,7 +170,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 		// ensure all runnables (procs) are dead before restarting the chain
 		wg.Wait()
 
-		// check if we should quit, currently only used by test suites for teardown
+		// check if we should quit
 		select {
 		case <-quit:
 			log.Warn("Quitting run chain")
