@@ -7,19 +7,34 @@
 Then Wago was built for you! Wago<sup>Watch, Go</sup> watches your filesystem and responds by building, managing server applications, refreshing Chrome and more.
 
 ## Example Wago Usage
-* Run a simple Ruby script: `wago -cmd='script.rb'`
-* Run a Ruby script with pry and interact with it: `wago -cmd='pry script.rb'`
-* Watch your **SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results. `wago `
+* Run a simple Ruby script:
+```
+wago -cmd='script.rb'
+```
+* Run a Ruby script with pry and interact with it:
+```
+  wago -cmd='pry script.rb'
+```
+* Watch your **SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results.
+```
+  wago
+```
 * Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom cURL test suite:
-
-`wago -cmd='go test -race && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'`
+```
+  wago -cmd='go test -race && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'
+```
 * Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!:
-
-`wago -q -dir=lib -exitwait=3 -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'`
+```
+  wago -q -dir=lib -exitwait=3 -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'
+```
 * Recursively develop Wago!:
-
-`wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'`
-* Run a **static webserver** in the current directory for a one-off HTML/CSS/JS test page. `wago -fiddle`
+```
+  wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'
+```
+* Run a **static webserver** in the current directory for a one-off HTML/CSS/JS test page.
+```
+wago -fiddle
+```
 
 ## Install
 Go (golang), requires Go 1.5+: `go get github.com/JonahBraun/wago`
