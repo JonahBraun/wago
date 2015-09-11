@@ -58,6 +58,7 @@ func main() {
 	runChain(newWatcher(), make(chan struct{}))
 }
 
+// event loop and action chain happen here
 func runChain(watcher *Watcher, quit chan struct{}) {
 	chain := make([]Runnable, 0, 5)
 
@@ -88,7 +89,6 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 
 	// main loop
 	for {
-		// all channels of struct{} are disposable, single use
 		// kill is passed to all Runnable so they know when they should exit
 		kill := make(chan struct{})
 
@@ -131,8 +131,8 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			wg.Add(1)
 
 			go func() {
-				wg.Done()
 				<-dead
+				wg.Done()
 			}()
 
 			select {
