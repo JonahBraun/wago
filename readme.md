@@ -66,7 +66,7 @@ If you are developing a static site, WaGo can run a static web server for you. S
 # Command Reference
 Run WaGo without any switches to get this reference:
 ```
-WaGo (Watch, Go) build tool. Usage:
+WaGo (Watch, Go) build tool. Version 1.0
   -cmd string
     	Run command, wait for it to complete.
   -daemon string
