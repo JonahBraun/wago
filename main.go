@@ -20,6 +20,8 @@ import (
 	"sync"
 )
 
+const VERSION = "1.0"
+
 var (
 	log     = dog.NewDog(dog.DEBUG)
 	verbose = flag.Bool("v", false, "Verbose")
@@ -255,7 +257,7 @@ func configSetup() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	flag.Usage = func() {
-		fmt.Println("WaGo (Watch, Go) build tool. Usage:")
+		fmt.Println("WaGo (Watch, Go) build tool version " + VERSION + ". Usage:")
 		flag.PrintDefaults()
 	}
 
