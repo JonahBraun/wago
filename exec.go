@@ -141,7 +141,7 @@ func (cmd *Cmd) Kill(proc chan error) {
 		return
 	}
 
-	if err := syscall.Kill(pgid, syscall.SIGTERM); err != nil {
+	if err := syscall.Kill(-pgid, syscall.SIGTERM); err != nil {
 		log.Warn("Failed to send SIGTERM, command must have exited (name, error):", cmd.Name, err)
 		return
 	}
@@ -160,7 +160,7 @@ func (cmd *Cmd) Kill(proc chan error) {
 	}
 
 	log.Info("After exitwait, command still running, sending SIGKILL…")
-	if err := syscall.Kill(pgid, syscall.SIGKILL); err != nil {
+	if err := syscall.Kill(-pgid, syscall.SIGKILL); err != nil {
 		if err.Error() == "no such process" {
 			log.Info("Process exited before SIGKILL:", cmd.Name)
 		} else {
