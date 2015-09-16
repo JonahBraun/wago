@@ -1,3 +1,5 @@
+Update 2016-Sep-16: WaGo 1.0.1 released, [download available](https://github.com/JonahBraun/wago/releases).
+
 **Do you routinely?:**
 
 1. Save your code.
