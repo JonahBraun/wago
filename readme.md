@@ -1,4 +1,4 @@
-Update 2015-Sep-16: WaGo 1.0.1 released, [download available](https://github.com/JonahBraun/wago/releases).
+*Update 2015-Sep-16*: WaGo 1.0.1 released, [download available](https://github.com/JonahBraun/wago/releases).
 
 **Do you routinely?:**
 
