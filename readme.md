@@ -21,7 +21,7 @@ wago -cmd='go test -race -short && go install -race' -daemon='appName' -timer=35
 ```bash
 wago -q -dir=lib -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:8123/'
 ```
-* Watch your **Compass/SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results. `compass watch` will also watch your files, but Wago is orders of magnitude more effecient and so better for laptop battery life.
+* Watch your **Compass/SASS** directory for changes. Recompile and refresh your Chrome tab so you can see the results. `compass watch` will also watch your files, but does so with far greater processor usage.
 ```bash
 wago -dir sass/ -cmd 'compass compile' -url 'http://localhost:8080/somewhere.html'
 ```
@@ -45,24 +45,24 @@ Linux (amd64): [Download from the Releases page](https://github.com/JonahBraun/w
 ### Action Chain
 Actions are run in the following order. All actions are optional but there must be at least one. The chain is stopped if an action fails (exit status >0).
 
-1. -cmd is run and waited to finish.
-1. -daemon is run. If -trigger, chain continues after -daemon outputs the exact trigger string. Otherwise, -timer milliseconds is waited and then the chain continues.
-1. -pcmd is run and waited to finish.
-1. -url is opened.
+1. `-cmd` is run and waited to finish.
+1. `-daemon` is run. If `-trigger`, chain continues after `-daemon` outputs the exact trigger string. Otherwise, `-timer` milliseconds is waited and then the chain continues.
+1. `-pcmd` is run and waited to finish.
+1. `-url` is opened.
 
 When a matching file system event occurs, all actions are killed and the chain is started from the beginning.
 
-Commands are executed by -shell, which defaults to your current shell. This allows you to do stuff like `some_command && some_script.sh`. Output and input are connected to your terminal so that you can interact with commands. Note that -daemon and -pcmd will run concurrently and input will be sent to both. If you require distinct input, use shell I/O redirection or wrap a command in a script.
+Commands are executed by `-shell`, which defaults to your current shell. This allows you to do stuff like `some_command && some_script.sh`. Output and input are connected to your terminal so that you can interact with commands. Note that `-daemon` and `-pcmd` will run concurrently and input will be sent to both. If you require distinct input, use shell I/O redirection or wrap a command in a script.
 
-WaGo reports actions as they occur. Once you are comfortable with what is happening, consider using -q to make things less noisy.
+WaGo reports actions as they occur. Once you are comfortable with what is happening, consider using `-q` to make things less noisy.
 
 ### File system events
-WaGo begins by recursively (-recursive defaults to true) watching all the directories in -dir except for those matching -ignore.
+WaGo begins by recursively (`-recursive` defaults to true) watching all the directories in `-dir` except for those matching `-ignore`.
 
-Events are ignored unless they match -watch. You can listen for all sorts of events, even deletes. Use -v to see all events and modify -watch accordingly.
+Events are ignored unless they match `-watch`. You can listen for all sorts of events, even deletes. Use `-v` to see all events and modify `-watch` accordingly.
 
 ### Webserver
-If you are developing a static site, WaGo can run a static web server for you. Set the port with -web to start it.
+If you are developing a static site, WaGo can run a static web server for you. Set the port with `-web` to start it.
 
 
 # Command Reference
@@ -104,11 +104,11 @@ WaGo (Watch, Go) build tool. Version 1.0
 # Troubleshooting
 
 ### ☠  Error… too many open files
-Use -dir to specify a subdirectory or set -recursive=false. Another option is to expand the regex of -ignore which will prevent directories from being watched.
+Use `-dir` to specify a subdirectory or set `-recursive=false`. Another option is to expand the regex of `-ignore` which will prevent directories from being watched.
 
 You can also raise the open file limit for your system. Try `ulimit -n` to see the current limit and raise it with `ulimit -n 2000`.
 
 ### Orphaned sub processes or resources are being left open
-Short answer: Try increasing -exitwait to something longer than the default of 50ms.
+Short answer: Try increasing `-exitwait` to something longer than the default of 50ms.
 
-Explanation: WaGo runs commands in a new process group, sends SIGTERM, waits -exitwait, then sends SIGKILL if the process group is still running. Some commands (eg: Elixir) will spin up their own subprocesses in a new process group which will not receive WaGo's signals. Your command should be cleaning up for exit when it receives SIGTERM, so check that it is doing so. 50ms should be long enough in most circumstances. If you continue to have problems with a popular tool or library, please open an issue. 
+Explanation: WaGo runs commands in a new process group, sends SIGTERM, waits `-exitwait`, then sends SIGKILL if the process group is still running. Some commands (eg: Elixir) will spin up their own subprocesses in a new process group which will not receive WaGo's signals. Your command should be cleaning up for exit when it receives SIGTERM, so check that it is doing so. 50ms should be long enough in most circumstances. If you continue to have problems with a popular tool or library, please open an issue. 
