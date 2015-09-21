@@ -21,7 +21,7 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
-const VERSION = "1.0"
+const VERSION = "1.0.2"
 
 var (
 	log     = dog.NewDog(dog.DEBUG)
@@ -38,7 +38,7 @@ var (
 	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively.")
 	targetDir     = flag.String("dir", "", "Directory to watch, defaults to current.")
 	url           = flag.String("url", "", "Open browser to this URL after all commands are successful.")
-	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY$)`, "React to FS events matching regex. Use -v to see all events.")
+	watchRegex    = flag.String("watch", `/[^\.][^/]*": (CREATE|MODIFY$)`, "React to FS events matching regex. Use -v to see all events.")
 	ignoreRegex   = flag.String("ignore", `\.(git|hg|svn)`, "Ignore directories matching regex.")
 	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
 	webBase       = flag.String("webbase", "", "Local directory to use as base for web server, defaults to -dir.")

@@ -61,6 +61,10 @@ WaGo begins by recursively (`-recursive` defaults to true) watching all the dire
 
 Events are ignored unless they match `-watch`. You can listen for all sorts of events, even deletes. Use `-v` to see all events and modify `-watch` accordingly.
 
+Regex Explained
+- **-ignore** `\.(git|hg|svn)` Ignore directories a dot followed by either git, hg, or svn.
+- **-watch** `/[^\.][^/]*": (CREATE|MODIFY$)` Only react to CREATE and MODIFY events where the filename (everything after the last /) does not start with a dot.
+
 ### Webserver
 If you are developing a static site, WaGo can run a static web server for you. Set the port with `-web` to start it.
 
@@ -68,7 +72,7 @@ If you are developing a static site, WaGo can run a static web server for you. S
 # Command Reference
 Run WaGo without any switches to get this reference:
 ```
-WaGo (Watch, Go) build tool. Version 1.0
+WaGo (Watch, Go) build tool. Version 1.0.2
   -cmd string
     	Run command, wait for it to complete.
   -daemon string
@@ -96,9 +100,11 @@ WaGo (Watch, Go) build tool. Version 1.0
     	Open browser to this URL after all commands are successful.
   -v	Verbose
   -watch string
-    	React to FS events matching regex. Use -v to see all events. (default "/\\w[\\w\\.]*\": (CREATE|MODIFY)")
+    	React to FS events matching regex. Use -v to see all events. (default "/[^\\.][^/]*\": (CREATE|MODIFY$)")
   -web string
     	Start a web server at this address, e.g. :8420
+  -webbase string
+    	Local directory to use as base for web server, defaults to -dir.
 ```
 
 # Troubleshooting
