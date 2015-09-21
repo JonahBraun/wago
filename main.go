@@ -9,8 +9,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/JonahBraun/dog"
-	"github.com/howeyc/fsnotify"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +16,9 @@ import (
 	"regexp"
 	"runtime"
 	"sync"
+
+	"github.com/JonahBraun/dog"
+	"github.com/howeyc/fsnotify"
 )
 
 const VERSION = "1.0"
@@ -40,6 +41,7 @@ var (
 	watchRegex    = flag.String("watch", `/\w[\w\.]*": (CREATE|MODIFY$)`, "React to FS events matching regex. Use -v to see all events.")
 	ignoreRegex   = flag.String("ignore", `\.(git|hg|svn)`, "Ignore directories matching regex.")
 	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
+	webBase       = flag.String("webbase", "", "Local directory to use as base for web server, defaults to -dir.")
 	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
 )
 
@@ -243,11 +245,15 @@ func newWatcher() *Watcher {
 
 func startWebServer() {
 	if *webServer != "" {
+		if *webBase == "" {
+			*webBase = *webServer
+		}
+
 		go func() {
 			log.Info("Starting web server on port", *webServer)
-			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*targetDir)))
+			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*webBase)))
 			if err != nil {
-				log.Fatal("Error starting web server:", err)(2)
+				log.Fatal("Web server error:", err)(2)
 			}
 		}()
 	}
