@@ -63,7 +63,7 @@ Events are ignored unless they match `-watch`. You can listen for all sorts of e
 
 Regex Explained
 - **-ignore** `\.(git|hg|svn)` Ignore directories a dot followed by either git, hg, or svn.
-- **-watch** `/[^\.][^/]*": (CREATE|MODIFY$)` Only react to CREATE and MODIFY events where the filename (everything after the last /) does not start with a dot.
+- **-watch** `/[^\.][^/]*": (CREATE|MODIFY$)` Only react to CREATE and MODIFY events where the filename (everything after the last /) does not start with a dot. A simple regex to watch all files is: `(CREATE|MODIFY)$`
 
 ### Webserver
 If you are developing a static site, WaGo can run a static web server for you. Set the port with `-web` to start it.
