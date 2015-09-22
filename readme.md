@@ -1,4 +1,4 @@
-*Update 21 Sep 2015*: WaGo 1.1.0 released, [release notes, download available](https://github.com/JonahBraun/wago/releases).
+*Update 21 Sep 2015*: Wago 1.1.0 released, [release notes, download available](https://github.com/JonahBraun/wago/releases).
 
 **Do you routinely?:**
 
@@ -6,9 +6,9 @@
 2. Do something in a terminal: kill a command, restart a daemon, wait for stuff to finish successfully, refresh a browser.
 3. *Repeat…*
 
-WaGo watches your code, then starts a conditional action chain capable of process monitoring and management.
+Wago<sup>Watch, Go</sup> watches your code, then starts a conditional action chain capable of process monitoring and management.
 
-## Example WaGo<sup>Watch, Go</sup> Usage
+## Examples
 * Run a Ruby script.
 ```bash
 wago -cmd='ruby script.rb'
@@ -25,7 +25,7 @@ wago -q -dir=lib -daemon='iex -S mix' -trigger='iex(1)>' -url='http://localhost:
 ```bash
 wago -dir sass/ -cmd 'compass compile' -url 'http://localhost:8080/somewhere.html'
 ```
-* Recursively develop WaGo!
+* Recursively develop Wago!
 ```bash
 wago -q -ignore='(\.git|tmp)' -cmd='go install -race' -daemon='wago -v -dir tmp -cmd "echo foo"' -pcmd='touch tmp/a && rm tmp/a'
 ```
@@ -54,25 +54,25 @@ When a matching file system event occurs, all actions are killed and the chain i
 
 Commands are executed by `-shell`, which defaults to your current shell. This allows you to do stuff like `some_command && some_script.sh`. Output and input are connected to your terminal so that you can interact with commands. Note that `-daemon` and `-pcmd` will run concurrently and input will be sent to both. If you require distinct input, use shell I/O redirection or wrap a command in a script.
 
-WaGo reports actions as they occur. Once you are comfortable with what is happening, consider using `-q` to make things less noisy.
+Wago reports actions as they occur. Once you are comfortable with what is happening, consider using `-q` to make things less noisy.
 
 ### File system events
-WaGo begins by recursively (`-recursive` defaults to true) watching all the directories in `-dir` except for those matching `-ignore`.
+Wago begins by recursively (`-recursive` defaults to true) watching all the directories in `-dir` except for those matching `-ignore`.
 
 Events are ignored unless they match `-watch`. You can listen for all sorts of events, even deletes. Use `-v` to see all events and modify `-watch` accordingly.
 
-Regex Explained
+Regex explained:
 - **-ignore** `\.(git|hg|svn)` Ignore directories a dot followed by either git, hg, or svn.
 - **-watch** `/[^\.][^/]*": (CREATE|MODIFY$)` Only react to CREATE and MODIFY events where the filename (everything after the last /) does not start with a dot. A simple regex to watch all files is: `(CREATE|MODIFY)$`
 
 ### Webserver
-If you are developing a static site, WaGo can run a static web server for you. Set the port with `-web` to start it.
+If you are developing a static site, Wago can run a static web server for you. Set the port with `-web` to start it.
 
 
 # Command Reference
-Run WaGo without any switches to get this reference:
+Run Wago without any switches to get this reference:
 ```
-WaGo (Watch, Go) build tool. Version 1.0.2
+Wago (Watch, Go) build tool. Version 1.0.2
   -cmd string
     	Run command, wait for it to complete.
   -daemon string
@@ -117,4 +117,4 @@ You can also raise the open file limit for your system. Try `ulimit -n` to see t
 ### Orphaned sub processes or resources are being left open
 Short answer: Try increasing `-exitwait` to something longer than the default of 50ms.
 
-Explanation: WaGo runs commands in a new process group, sends SIGTERM, waits `-exitwait`, then sends SIGKILL if the process group is still running. Some commands (eg: Elixir) will spin up their own subprocesses in a new process group which will not receive WaGo's signals. Your command should be cleaning up for exit when it receives SIGTERM, so check that it is doing so. 50ms should be long enough in most circumstances. If you continue to have problems with a popular tool or library, please open an issue. 
+Explanation: Wago runs commands in a new process group, sends SIGTERM, waits `-exitwait`, then sends SIGKILL if the process group is still running. Some commands (eg: Elixir) will spin up their own subprocesses in a new process group which will not receive WaGo's signals. Your command should be cleaning up for exit when it receives SIGTERM, so check that it is doing so. 50ms should be long enough in most circumstances. If you continue to have problems with a popular tool or library, please open an issue. 
