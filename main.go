@@ -32,6 +32,7 @@ var (
 	daemonCmd     = flag.String("daemon", "", "Run command and leave running in the background.")
 	daemonTimer   = flag.Int("timer", 0, "Wait miliseconds after starting daemon, then continue.")
 	daemonTrigger = flag.String("trigger", "", "Wait for daemon to output this string, then continue.")
+	daemonRestart = flag.Bool("daemonRestart", true, "Should daemon restart every time?")
 	exitWait      = flag.Int("exitwait", 50, "Max miliseconds a process has after a SIGTERM to exit before a SIGKILL.")
 	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode! Start a web server, open browser to URL of targetDir/index.html")
 	postCmd       = flag.String("pcmd", "", "Run command after daemon starts. Use this to kick off your test suite.")
@@ -91,9 +92,9 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 	}
 	if len(*daemonCmd) > 0 {
 		if len(*daemonTrigger) > 0 {
-			chain = append(chain, NewDaemonTrigger(*daemonCmd, *daemonTrigger))
+			chain = append(chain, NewDaemonTrigger(*daemonCmd, *daemonTrigger, *daemonRestart))
 		} else {
-			chain = append(chain, NewDaemonTimer(*daemonCmd, *daemonTimer))
+			chain = append(chain, NewDaemonTimer(*daemonCmd, *daemonTimer, *daemonRestart))
 		}
 	}
 	if len(*postCmd) > 0 {
@@ -147,15 +148,28 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			}
 		}()
 
+		var globallyKnownPrograms map[chan struct{}]bool
+		var globalWg sync.WaitGroup
+
 	RunLoop:
 		for _, runnable := range chain {
-			done, dead := runnable(kill)
-			wg.Add(1)
+			done, dead, shouldRestart := runnable(kill, quit)
+			if shouldRestart {
+				wg.Add(1)
 
-			go func() {
-				<-dead
-				wg.Done()
-			}()
+				go func() {
+					<-dead
+					wg.Done()
+				}()
+			} else {
+				if _, ok := globallyKnownPrograms[dead]; !ok {
+					globalWg.Add(1)
+					go func() {
+						<-dead
+						globalWg.Done()
+					}()
+				}
+			}
 
 			select {
 			case d := <-done:
@@ -177,6 +191,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 		// check if we should quit
 		select {
 		case <-quit:
+			globalWg.Wait()
 			log.Debug("Quitting main event/action loop")
 			return
 		default:

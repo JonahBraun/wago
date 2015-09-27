@@ -52,17 +52,17 @@ func NewCmd(command string) *Cmd {
 	return cmd
 }
 
-type Runnable func(chan struct{}) (chan bool, chan struct{})
+type Runnable func(chan struct{}, chan struct{}) (chan bool, chan struct{}, bool)
 
 func NewRunWait(command string) Runnable {
-	return func(kill chan struct{}) (chan bool, chan struct{}) {
+	return func(kill chan struct{}, quit chan struct{}) (chan bool, chan struct{}, bool) {
 		log.Info("Running command, waiting:", command)
 
 		cmd := NewCmd(command)
 
 		go cmd.RunWait(kill)
 
-		return cmd.done, cmd.dead
+		return cmd.done, cmd.dead, true
 	}
 }
 
@@ -169,18 +169,26 @@ func (cmd *Cmd) Kill(proc chan error) {
 	}
 }
 
-func NewDaemonTimer(command string, period int) Runnable {
-	return func(kill chan struct{}) (chan bool, chan struct{}) {
+func NewDaemonTimer(command string, period int, restart bool) Runnable {
+	var runningCmd Cmd
+	var alreadyRunning bool
+	return func(kill chan struct{}, quit chan struct{}) (chan bool, chan struct{}, bool) {
+		if !restart && alreadyRunning {
+			log.Info("Leaving already running daemon as is")
+			return runningCmd.done, runningCmd.dead, restart
+		}
 		log.Info("Starting daemon:", command)
 
 		cmd := NewCmd(command)
+		runningCmd = *cmd
+		alreadyRunning = true
 
-		go cmd.RunDaemonTimer(kill, period)
+		go cmd.RunDaemonTimer(kill, quit, period, restart)
 
-		return cmd.done, cmd.dead
+		return cmd.done, cmd.dead, restart
 	}
 }
-func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
+func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, quit chan struct{}, period int, restart bool) {
 	defer close(cmd.done)
 	defer close(cmd.dead)
 
@@ -227,7 +235,9 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 				cmd.done <- true
 			}
 		case <-kill:
-			cmd.Kill(proc)
+			if restart {
+				cmd.Kill(proc)
+			}
 		}
 	case err := <-proc:
 		timer.Stop()
@@ -240,6 +250,14 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 			cmd.done <- true
 		}
 	case <-kill:
+		if restart {
+			timer.Stop()
+			cmd.Kill(proc)
+		}
+	}
+
+	if !restart {
+		<-quit
 		timer.Stop()
 		cmd.Kill(proc)
 	}
@@ -248,19 +266,27 @@ func (cmd *Cmd) RunDaemonTimer(kill chan struct{}, period int) {
 	<-proc
 }
 
-func NewDaemonTrigger(command string, trigger string) Runnable {
-	return func(kill chan struct{}) (chan bool, chan struct{}) {
+func NewDaemonTrigger(command string, trigger string, restart bool) Runnable {
+	var runningCmd Cmd
+	var alreadyRunning bool
+	return func(kill chan struct{}, quit chan struct{}) (chan bool, chan struct{}, bool) {
+		if !restart && alreadyRunning {
+			log.Info("Leaving already running daemon as is")
+			return runningCmd.done, runningCmd.dead, restart
+		}
 		log.Info("Starting daemon:", command)
 
 		cmd := NewCmd(command)
+		runningCmd = *cmd
+		alreadyRunning = true
 
-		go cmd.RunDaemonTrigger(kill, trigger)
+		go cmd.RunDaemonTrigger(kill, quit, trigger, restart)
 
-		return cmd.done, cmd.dead
+		return cmd.done, cmd.dead, restart
 	}
 }
 
-func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
+func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, quit chan struct{}, trigger string, restart bool) {
 	defer close(cmd.done)
 	defer close(cmd.dead)
 
@@ -346,7 +372,9 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 				cmd.done <- true
 			}
 		case <-kill:
-			cmd.Kill(proc)
+			if restart {
+				cmd.Kill(proc)
+			}
 		}
 	case err := <-proc:
 		if err != nil {
@@ -358,6 +386,13 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 			cmd.done <- true
 		}
 	case <-kill:
+		if restart {
+			cmd.Kill(proc)
+		}
+	}
+
+	if !restart {
+		<-quit
 		cmd.Kill(proc)
 	}
 

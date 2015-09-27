@@ -8,7 +8,7 @@ import (
 )
 
 func NewBrowser(url string) Runnable {
-	return func(kill chan struct{}) (chan bool, chan struct{}) {
+	return func(kill chan struct{}, quit chan struct{}) (chan bool, chan struct{}, bool) {
 		command := fmt.Sprintf("google-chrome \"%s\"", url)
 
 		cmd := &Cmd{
@@ -20,7 +20,7 @@ func NewBrowser(url string) Runnable {
 
 		go cmd.RunBrowser()
 
-		return cmd.done, cmd.dead
+		return cmd.done, cmd.dead, true
 	}
 }
 
