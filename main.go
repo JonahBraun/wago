@@ -21,7 +21,7 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
-const VERSION = "1.1.0"
+const VERSION = "1.1.1"
 
 var (
 	log     = dog.NewDog(dog.DEBUG)

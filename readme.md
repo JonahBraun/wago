@@ -1,4 +1,4 @@
-*Update 21 Sep 2015*: Wago 1.1.0 released, [release notes, download available](https://github.com/JonahBraun/wago/releases).
+*Update 27 Sep 2015*: Wago 1.1.1 released, [release notes, download available](https://github.com/JonahBraun/wago/releases).
 
 **Do you routinely?:**
 
@@ -72,7 +72,7 @@ If you are developing a static site, Wago can run a static web server for you. S
 # Command Reference
 Run Wago without any switches to get this reference:
 ```
-Wago (Watch, Go) build tool. Version 1.0.2
+WaGo (Watch, Go) build tool. Version 1.1.1
   -cmd string
     	Run command, wait for it to complete.
   -daemon string
