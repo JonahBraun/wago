@@ -148,7 +148,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			}
 		}()
 
-		var globallyKnownPrograms map[chan struct{}]bool
+		var globallyKnownPrograms map[chan struct{}]bool = make(map[chan struct{}]bool)
 		var globalWg sync.WaitGroup
 
 	RunLoop:
@@ -163,6 +163,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 				}()
 			} else {
 				if _, ok := globallyKnownPrograms[dead]; !ok {
+					globallyKnownPrograms[dead] = true
 					globalWg.Add(1)
 					go func() {
 						<-dead
