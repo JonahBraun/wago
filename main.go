@@ -246,7 +246,7 @@ func newWatcher() *Watcher {
 func startWebServer() {
 	if *webServer != "" {
 		if *webBase == "" {
-			*webBase = *webServer
+			*webBase = *targetDir
 		}
 
 		go func() {
