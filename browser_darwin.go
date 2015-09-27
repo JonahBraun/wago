@@ -42,7 +42,7 @@ var chromeApplescript = `
 `
 
 func NewBrowser(url string) Runnable {
-	return func(kill chan struct{}) (chan bool, chan struct{}) {
+	return func(kill chan struct{}, quit chan struct{}) (chan bool, chan struct{}, bool) {
 		cmd := &Cmd{
 			Cmd:  exec.Command("osascript"),
 			Name: url,
@@ -52,7 +52,7 @@ func NewBrowser(url string) Runnable {
 
 		go cmd.RunBrowser(url)
 
-		return cmd.done, cmd.dead
+		return cmd.done, cmd.dead, true
 	}
 }
 
