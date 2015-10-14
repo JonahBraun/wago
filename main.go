@@ -16,6 +16,9 @@ import (
 	"regexp"
 	"runtime"
 	"sync"
+	"time"
+
+	"golang.org/x/net/http2"
 
 	"github.com/JonahBraun/dog"
 	"github.com/howeyc/fsnotify"
@@ -40,7 +43,9 @@ var (
 	url           = flag.String("url", "", "Open browser to this URL after all commands are successful.")
 	watchRegex    = flag.String("watch", `/[^\.][^/]*": (CREATE|MODIFY$)`, "React to FS events matching regex. Use -v to see all events.")
 	ignoreRegex   = flag.String("ignore", `\.(git|hg|svn)`, "Ignore directories matching regex.")
-	webServer     = flag.String("web", "", "Start a web server at this address, e.g. :8420")
+	webServer     = flag.String("web", "", "Deprecated, use http or http2.")
+	httpPort      = flag.String("http", "", "Start a http server at this address, e.g. :8419")
+	http2Port     = flag.String("http2", "", "Start a tls and http2 server at this address, e.g. :8420")
 	webBase       = flag.String("webbase", "", "Local directory to use as base for web server, defaults to -dir.")
 	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
 )
@@ -245,18 +250,36 @@ func newWatcher() *Watcher {
 
 func startWebServer() {
 	if *webServer != "" {
-		if *webBase == "" {
-			*webBase = *targetDir
+		log.Warn("-web is deprecated, please use -http or -http2")
+		*httpPort = *webServer
+	}
+	if *http2Port == "" {
+		return
+	}
+
+	if *webBase == "" {
+		*webBase = *targetDir
+	}
+
+	go func() {
+		log.Info("Starting http2/tls server on port", *http2Port)
+
+		s := &http.Server{
+			Addr:           *http2Port,
+			Handler:        http.FileServer(http.Dir(*webBase)),
+			ReadTimeout:    20 * time.Second,
+			WriteTimeout:   20 * time.Second,
+			MaxHeaderBytes: 1 << 20,
+			TLSConfig:      CreateTLS(),
 		}
 
-		go func() {
-			log.Info("Starting web server on port", *webServer)
-			err := http.ListenAndServe(*webServer, http.FileServer(http.Dir(*webBase)))
-			if err != nil {
-				log.Fatal("Web server error:", err)(2)
-			}
-		}()
-	}
+		http2.ConfigureServer(s, &http2.Server{PermitProhibitedCipherSuites: true})
+
+		err := s.ListenAndServeTLS("", "")
+		if err != nil {
+			log.Fatal("Web server error:", err)(2)
+		}
+	}()
 }
 
 func configSetup() {
@@ -299,7 +322,7 @@ func configSetup() {
 		log.Fatal("Specify a daemon command to use the trigger or timer")(1)
 	}
 
-	if len(*buildCmd) == 0 && len(*daemonCmd) == 0 && !*fiddle && len(*postCmd) == 0 && len(*url) == 0 && len(*webServer) == 0 {
+	if len(*buildCmd) == 0 && len(*daemonCmd) == 0 && !*fiddle && len(*postCmd) == 0 && len(*url) == 0 && len(*webServer) == 0 && len(*httpPort) == 0 && len(*http2Port) == 0 {
 		flag.Usage()
 		log.Fatal("You must specify an action")(1)
 	}
