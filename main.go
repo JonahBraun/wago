@@ -7,8 +7,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,7 +18,6 @@ import (
 	"regexp"
 	"runtime"
 	"sync"
-	"time"
 
 	"golang.org/x/net/http2"
 
@@ -24,7 +25,7 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
-const VERSION = "1.1.1"
+const VERSION = "1.2.0"
 
 var (
 	log     = dog.NewDog(dog.DEBUG)
@@ -43,10 +44,11 @@ var (
 	url           = flag.String("url", "", "Open browser to this URL after all commands are successful.")
 	watchRegex    = flag.String("watch", `/[^\.][^/]*": (CREATE|MODIFY$)`, "React to FS events matching regex. Use -v to see all events.")
 	ignoreRegex   = flag.String("ignore", `\.(git|hg|svn)`, "Ignore directories matching regex.")
-	webServer     = flag.String("web", "", "Deprecated, use http or http2.")
-	httpPort      = flag.String("http", "", "Start a http server at this address, e.g. :8419")
-	http2Port     = flag.String("http2", "", "Start a tls and http2 server at this address, e.g. :8420")
-	webBase       = flag.String("webbase", "", "Local directory to use as base for web server, defaults to -dir.")
+	httpPort      = flag.String("http", "", "Start a HTTP server on this port, e.g. :8420")
+	http2Port     = flag.String("h2", "", "Start a HTTP/TLS server on this port, e.g. :8421")
+	keyFile       = flag.String("key", "", "X.509 key file for HTTP2/TLS, eg: key.pem")
+	certFile      = flag.String("cert", "", "X.509 cert file for HTTP2/TLS, eg: cert.pem")
+	webRoot       = flag.String("webroot", "", "Local directory to use as root for web server, defaults to -dir.")
 	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
 )
 
@@ -249,37 +251,71 @@ func newWatcher() *Watcher {
 }
 
 func startWebServer() {
-	if *webServer != "" {
-		log.Warn("-web is deprecated, please use -http or -http2")
-		*httpPort = *webServer
-	}
-	if *http2Port == "" {
-		return
+	var err error
+
+	if *webRoot == "" {
+		*webRoot = *targetDir
 	}
 
-	if *webBase == "" {
-		*webBase = *targetDir
-	}
-
-	go func() {
-		log.Info("Starting http2/tls server on port", *http2Port)
+	if *httpPort != "" {
+		log.Info("HTTP port", *httpPort)
 
 		s := &http.Server{
-			Addr:           *http2Port,
-			Handler:        http.FileServer(http.Dir(*webBase)),
-			ReadTimeout:    20 * time.Second,
-			WriteTimeout:   20 * time.Second,
-			MaxHeaderBytes: 1 << 20,
-			TLSConfig:      CreateTLS(),
+			Addr:    *httpPort,
+			Handler: http.FileServer(http.Dir(*webRoot)),
 		}
 
-		http2.ConfigureServer(s, &http2.Server{PermitProhibitedCipherSuites: true})
+		http2.ConfigureServer(s, nil)
 
-		err := s.ListenAndServeTLS("", "")
+		go func() {
+			err := s.ListenAndServe()
+			if err != nil {
+				log.Fatal("HTTP server error:", err)(2)
+			}
+		}()
+	}
+
+	if *http2Port != "" {
+		log.Info("HTTP2 & TLS port", *http2Port)
+
+		var key, cert []byte
+		if *keyFile == "" {
+			key = []byte(x509Key)
+			cert = []byte(x509Cert)
+		} else {
+			key, err = ioutil.ReadFile(*keyFile)
+			if err != nil {
+				log.Fatal(err)(15)
+			}
+			cert, err = ioutil.ReadFile(*certFile)
+			if err != nil {
+				log.Fatal(err)(15)
+			}
+		}
+
+		tlsPair, err := tls.X509KeyPair(cert, key)
 		if err != nil {
-			log.Fatal("Web server error:", err)(2)
+			log.Fatal(err)(15)
 		}
-	}()
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{tlsPair},
+		}
+
+		s := &http.Server{
+			Addr:      *http2Port,
+			Handler:   http.FileServer(http.Dir(*webRoot)),
+			TLSConfig: tlsConfig,
+		}
+
+		http2.ConfigureServer(s, nil)
+
+		go func() {
+			err := s.ListenAndServeTLS("", "")
+			if err != nil {
+				log.Fatal("HTTP2/TLS server error:", err)(2)
+			}
+		}()
+	}
 }
 
 func configSetup() {
@@ -296,6 +332,9 @@ func configSetup() {
 		log.Fatal("You must specify an action")(1)
 	}
 
+	webBase := flag.String("webbase", "", "Deprecated, use webroot.")
+	webServer := flag.String("web", "", "Deprecated, use http or http2.")
+
 	flag.Parse()
 
 	if *verbose {
@@ -304,6 +343,15 @@ func configSetup() {
 		log = dog.NewDog(dog.WARN)
 	} else {
 		log = dog.NewDog(dog.INFO)
+	}
+
+	if *webBase != "" {
+		log.Warn("-webbase is deprecated, use -webroot")
+		*webRoot = *webBase
+	}
+	if *webServer != "" {
+		log.Warn("-web is deprecated, use -http or -h2")
+		*httpPort = *webServer
 	}
 
 	if len(*shell) == 0 {
@@ -328,8 +376,11 @@ func configSetup() {
 	}
 
 	if *fiddle {
-		if *webServer == "" {
-			*webServer = ":9933"
+		if *httpPort == "" {
+			*httpPort = ":8420"
+		}
+		if *http2Port == "" {
+			*http2Port = ":8421"
 		}
 		if *url == "" {
 			*url = "http://localhost" + *webServer + "/"
@@ -343,5 +394,10 @@ func configSetup() {
 		}
 		targetDir = &cwd
 	}
+
+	if (*keyFile != "" && *certFile == "") || (*certFile != "" && *keyFile == "") {
+		log.Fatal("Set both key and cert or none to use default.")(1)
+	}
+
 	log.Debug("Target dir:", *targetDir)
 }

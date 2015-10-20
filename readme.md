@@ -1,4 +1,4 @@
-*Update 27 Sep 2015*: Wago 1.1.1 released, [release notes, download available](https://github.com/JonahBraun/wago/releases).
+*Update 19 Oct 2015*: Wago 1.2.0 beta released, [release notes, download available](https://github.com/JonahBraun/wago/releases).
 
 **Do you routinely?:**
 
@@ -66,13 +66,21 @@ Regex explained:
 - **-watch** `/[^\.][^/]*": (CREATE|MODIFY$)` Only react to CREATE and MODIFY events where the filename (everything after the last /) does not start with a dot. A simple regex to watch all files is: `(CREATE|MODIFY)$`
 
 ### Webserver
-If you are developing a static site, Wago can run a static web server for you. Set the port with `-web` to start it.
+If you are developing a static site, Wago can run a static web server for you. To start it, set the port number(s) with `-http` and/or `-h2`.
 
+`-h2` serves both HTTPS (TLS) and HTTP2 on the same port. A X.509 certificate is required for this and one is included in Wago. Because the private key is published in GitHub, **the bundled certificate is unsafe** and should only be used over local and private networks. You can set your own certificate with `-key` and `-cert`.
+
+To generate your own self-signed certificate pair, try this command:
+```bash
+yes "" | openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 4000 -nodes
+```
 
 # Command Reference
 Run Wago without any switches to get this reference:
 ```
-WaGo (Watch, Go) build tool. Version 1.1.1
+WaGo (Watch, Go) build tool. Version 1.2.0
+  -cert string
+    	X.509 cert file for HTTP2/TLS, eg: cert.pem
   -cmd string
     	Run command, wait for it to complete.
   -daemon string
@@ -83,8 +91,14 @@ WaGo (Watch, Go) build tool. Version 1.1.1
     	Max miliseconds a process has after a SIGTERM to exit before a SIGKILL. (default 50)
   -fiddle
     	CLI fiddle mode! Start a web server, open browser to URL of targetDir/index.html
+  -h2 string
+    	Start a HTTP/TLS server on this port, e.g. :8421
+  -http string
+    	Start a HTTP server on this port, e.g. :8420
   -ignore string
     	Ignore directories matching regex. (default "\\.(git|hg|svn)")
+  -key string
+    	X.509 key file for HTTP2/TLS, eg: key.pem
   -pcmd string
     	Run command after daemon starts. Use this to kick off your test suite.
   -q	Quiet, only warnings and errors
@@ -101,10 +115,8 @@ WaGo (Watch, Go) build tool. Version 1.1.1
   -v	Verbose
   -watch string
     	React to FS events matching regex. Use -v to see all events. (default "/[^\\.][^/]*\": (CREATE|MODIFY$)")
-  -web string
-    	Start a web server at this address, e.g. :8420
-  -webbase string
-    	Local directory to use as base for web server, defaults to -dir.
+  -webroot string
+    	Local directory to use as root for web server, defaults to -dir.
 ```
 
 # Troubleshooting

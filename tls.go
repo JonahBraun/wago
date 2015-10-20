@@ -1,75 +1,50 @@
 package main
 
-import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/pem"
-	_ "log"
-	"math/big"
-	"net"
-	"time"
-)
+var x509Key = `-----BEGIN RSA PRIVATE KEY-----
+MIIEogIBAAKCAQEAvT9LoEW8+6Tnv17nLpT8auvhy2E2/Udbauc6Im+/owZ2HsM0
+DCpZZgS1wcw1J15zB+m4YP4IyqYpWsTKVeRZW7TQBYO1TzxeSEYe4V1t3WH62sGJ
+nSw1NGcX6b0wZhBvYZojerqkzty5QGWQNiF80g9hPLuF2vlAV4bkvpCc4hNo3ZBd
+dZ7KFAp24dNjrwAwB57CumxaBRshu3ezX6XyaSOX1P9V9Q3jnVh2Aojog1eI8Tjb
+R/s4Z/UPnw5JM7FoZfcdkZktCrcvoDI2oHWklQhthndlUVDf9HP7yjkCmFJJzpZr
+/ces6i2D5R7oNw2v495BtuWHcDBPk/95MTlXqwIDAQABAoIBAH5se1QNYotlhZ/V
+gXEf/GRdQhEA16Bp/As1fyOkLYx185DnbKy32dMKUHWvus6bDRN7Mj4xVqQyTqwh
+jN3GV1+pMdKNQyE0vfNgTJ7XMF7VZqSe6BTEhKKGQHZYea2lSxMTyqHhb9n1oBgC
+AU34Hw+hUJ8m0uwO2MngBo27w+JOWGfNkYkQq6P3Ge8ZBcx20kQyTnLKOTzCARrp
+LUmrkgU/0QwVJE7b6YUP027vH+/SjBLHR/8dVaY3VygOn3CtwoagrZR6roAkrZkq
+O+z8QGEx7lUM/mdKFbuIV0puB+8aXQQJIuTY5W6j1hYmX/XJNlheJUsVhnPKpGvG
+38zPn2ECgYEAzicZncqvvRoCowuuPRhv8b+TWvdu2sgkxAixisoMB6upI7TZ70l8
+S8jpIgHQddIogSqsf3okZS33jZtvcb46/gzfb5kjmtiWknNOoJ5nfkHQcvFaDlAU
+xFzl2cKZEXwksRDeM5AYTTIbNLlnx6AR0obWiBFEtN1y0HTj37Y5JBsCgYEA6wG9
+8XoelEL4m4skaiIU92+EJ2Hr3gdRZbinn3LqfQ7NpyTLKFmNrFYeqvQO0CxIpd9h
+Lv52l4REtUTlH4NfQM0Ahepsm3h7G6oshkQO8trKwRqQt0FdbmvJsEWuHRA2e9vo
+g3j9NJqWgxs/Ju1jX2FXtNJWbiTr+zLOOxDyM7ECgYAgKeeMP+BVX6aDq8HelF56
+2En0SmCIT+u0jiqtHcLsu3KjOIc8FzoGVO1Sufe9OjHJnU/Wf8cH5jkWZeboVya7
+FmUR81GjyiEL7mOZGb3J7BjKpi9HxmTHEjtmUz8whC7xVVFluBiiiqvF+RthAO9m
+6lS0XAVdNqPANEyNTc/yewKBgHINUF+nQrv1nK3wY2XW0JIdXue2EECbEJfre/5Y
+SREUZB5gLvCQNb+TtCKHe8DwHPnTZVjnSirSmH3Yx9H5cfsDAuP7F2aEnEqa1iz7
+Tr3yDUCWYfFuGagDS8juqEeWnLqTyU41I72p4K4URRvhTb72gRhSlHu0E4q/53Kn
+EMShAoGAPdj8mQlbvBt2MaFpn+7AucIiNy2mC8pFXRnrGaioqnGKDmpY6ouxay7Q
+SNTaARDoyagKPJnB8FFH7Rrj5U44Wc/ojkIhXHM0Dprm+Kk1XtanmeB1ruwJiTjf
+Xw4Ux38J+ZP1i2egKzEQLSf7nIVdlwYynNN6z7vkEyrWYFnJMQI=
+-----END RSA PRIVATE KEY-----`
 
-func CreateTLS() *tls.Config {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-
-	if err != nil {
-		log.Fatal("failed to generate private key:", err)(15)
-	}
-
-	var notBefore time.Time
-	notBefore = time.Now()
-	notAfter := notBefore.Add(365 * 24 * time.Hour)
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		log.Fatal("failed to generate serial number:", err)(15)
-	}
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization: []string{"Wago"},
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-	}
-
-	hosts := []string{"127.0.0.1", "::1", "localhost"}
-	for _, h := range hosts {
-		if ip := net.ParseIP(h); ip != nil {
-			template.IPAddresses = append(template.IPAddresses, ip)
-		} else {
-			template.DNSNames = append(template.DNSNames, h)
-		}
-	}
-
-	template.IsCA = true
-	template.KeyUsage |= x509.KeyUsageCertSign
-
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
-	if err != nil {
-		log.Fatal("Failed to create certificate:", err)(15)
-	}
-
-	certPEMBlock := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-
-	keyPEMBlock := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
-
-	cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		log.Fatal(err)(15)
-	}
-
-	return &tls.Config{
-		Certificates: []tls.Certificate{cert},
-	}
-}
+var x509Cert = `-----BEGIN CERTIFICATE-----
+MIIDRzCCAi+gAwIBAgIRAJWHiFMw0vvOW0Vrtbl3BG8wDQYJKoZIhvcNAQELBQAw
+KjEoMCYGA1UEChMfV2FnbyAtIFRoZSB3YXRjaC9nbyBidWlsZCB0b29sLjAgFw0x
+NTEwMjAwMzE5NDlaGA8yMDg1MTAwMjAzMTk0OVowKjEoMCYGA1UEChMfV2FnbyAt
+IFRoZSB3YXRjaC9nbyBidWlsZCB0b29sLjCCASIwDQYJKoZIhvcNAQEBBQADggEP
+ADCCAQoCggEBAL0/S6BFvPuk579e5y6U/Grr4cthNv1HW2rnOiJvv6MGdh7DNAwq
+WWYEtcHMNSdecwfpuGD+CMqmKVrEylXkWVu00AWDtU88XkhGHuFdbd1h+trBiZ0s
+NTRnF+m9MGYQb2GaI3q6pM7cuUBlkDYhfNIPYTy7hdr5QFeG5L6QnOITaN2QXXWe
+yhQKduHTY68AMAeewrpsWgUbIbt3s1+l8mkjl9T/VfUN451YdgKI6INXiPE420f7
+OGf1D58OSTOxaGX3HZGZLQq3L6AyNqB1pJUIbYZ3ZVFQ3/Rz+8o5AphSSc6Wa/3H
+rOotg+Ue6DcNr+PeQbblh3AwT5P/eTE5V6sCAwEAAaNmMGQwDgYDVR0PAQH/BAQD
+AgKkMBMGA1UdJQQMMAoGCCsGAQUFBwMBMA8GA1UdEwEB/wQFMAMBAf8wLAYDVR0R
+BCUwI4IJbG9jYWxob3N0hwR/AAABhxAAAAAAAAAAAAAAAAAAAAABMA0GCSqGSIb3
+DQEBCwUAA4IBAQBCcDwJxpR1LXG+C+cAhRrWLvxW7NT5t+szKBpQH41FmZLs2jrc
+CQllq2XAzuXIgWxhlKkcf/bcHdPlyk5CmjrGZS+//pszjFMAjlXnjO42jF7Gna+O
+v/OVTz1DU+XGlcAnn4snDrSeNMax3c4qn5DDtczGQU7P5HsctzbvdNWxHUiezHJY
+xOSr0uI96kjkW/WpzoMJWPl6oSGQV/gzYhcEeu/mGQF+waESmrtnF1OPMwzWmvVQ
+g9uluporlFwSBLQXIy89FMunyWO984nfNc1/mY3kbpnoYYgpdVXCmsIjLVf+hANq
+N4WVnTb75/T9s8K9sserkt506nYi8dvmLlsX
+-----END CERTIFICATE-----`
