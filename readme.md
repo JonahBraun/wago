@@ -15,7 +15,7 @@ wago -cmd='ruby script.rb'
 ```
 * Watch your **Go** webapp, test, install, launch server, wait for it to connect to the DB, kick off a custom curl test suite.
 ```bash
-wago -cmd='go test -race -short && go install -race' -daemon='appName' -timer=35 -pcmd='test_suite.sh'
+wago -cmd='go test && go install' -daemon='appName' -timer=35 -pcmd='test_suite.sh'
 ```
 * Watch your **Elixir** webapp, restarting iex, waiting for it to load, refreshing Chrome. You can still interact with iex between builds!
 ```bash
