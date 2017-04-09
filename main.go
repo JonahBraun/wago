@@ -16,7 +16,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sync"
 
 	"golang.org/x/net/http2"
@@ -25,6 +24,7 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
+// VERSION of wago
 const VERSION = "1.2.0"
 
 var (
@@ -50,8 +50,11 @@ var (
 	certFile      = flag.String("cert", "", "X.509 cert file for HTTP2/TLS, eg: cert.pem")
 	webRoot       = flag.String("webroot", "", "Local directory to use as root for web server, defaults to -dir.")
 	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
+	subStdin      chan *Cmd
+	unsubStdin    chan *Cmd
 )
 
+// Watcher of what string to watch for
 type Watcher struct {
 	Event chan fmt.Stringer
 	Error chan error
@@ -67,7 +70,7 @@ func main() {
 
 	startWebServer()
 
-	ManageStdin()
+	subStdin, unsubStdin = ManageUserInput(os.Stdin)
 
 	runChain(newWatcher(), catchSignals())
 }
@@ -319,8 +322,6 @@ func startWebServer() {
 }
 
 func configSetup() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	flag.Usage = func() {
 		fmt.Println("WaGo (Watch, Go) build tool. Version", VERSION)
 		flag.PrintDefaults()
@@ -383,7 +384,7 @@ func configSetup() {
 			*http2Port = ":8421"
 		}
 		if *url == "" {
-			*url = "http://localhost" + *webServer + "/"
+			*url = "http://localhost" + *httpPort + "/"
 		}
 	}
 

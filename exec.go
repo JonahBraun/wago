@@ -87,8 +87,8 @@ func (cmd *Cmd) RunWait(kill chan struct{}) {
 
 	err := cmd.Start()
 	if err != nil {
-		// this is a program, system or environment error (shell is set wrong)
-		// because it is not recoverable between builds, it is fatal
+		// This error is a program, system or environment error (shell is set wrong).
+		// Because it is not recoverable between builds, it is fatal.
 		log.Fatal("Error starting command:", err)(6)
 	}
 

@@ -1,16 +1,11 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"github.com/JonahBraun/dog"
 	"os"
-	"runtime"
 	"testing"
 	"time"
 )
-
-var announceTest func(...interface{})
 
 type FakeEvent string
 
@@ -29,22 +24,23 @@ func (watcher *Watcher) SendCreate() {
 	watcher.Event <- FakeEvent(`"/tmp/fake.txt": CREATE`)
 }
 
-func TestMain(m *testing.M) {
-	announceTest = dog.CreateLog(dog.FgYellow, "")
-	flag.Parse()
+func TestAppIntegrations(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping application integration testing.")
+	}
 
 	// essential setup commands
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	*shell = "/bin/sh"
 
-	ManageStdin()
+	subStdin, unsubStdin = ManageUserInput(os.Stdin)
 
-	os.Exit(m.Run())
+	t.Run("Simple", appSimple)
+	t.Run("EventRace", appEventRace)
+	t.Run("Daemon", appDaemon)
+	t.Run("DaemonTimer", appDaemonTimer)
 }
 
-func TestSimple(t *testing.T) {
-	announceTest("TestSimple")
-
+func appSimple(t *testing.T) {
 	*buildCmd = "echo testsimple"
 
 	watcher := NewFakeWatcher()
@@ -75,13 +71,7 @@ func TestSimple(t *testing.T) {
 	*buildCmd = ""
 }
 
-func TestEventRace(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	announceTest("TestEventRace")
-
+func appEventRace(t *testing.T) {
 	*buildCmd = "echo echonow"
 
 	watcher := NewFakeWatcher()
@@ -112,9 +102,7 @@ func TestEventRace(t *testing.T) {
 	*buildCmd = ""
 }
 
-func TestDaemon(t *testing.T) {
-	announceTest("TestDaemon")
-
+func appDaemon(t *testing.T) {
 	*daemonCmd = "sleep 1s && echo testdaemonOut1 && sleep 2s && echo testdaemonOut2"
 	watcher := NewFakeWatcher()
 
@@ -132,9 +120,7 @@ func TestDaemon(t *testing.T) {
 	*daemonCmd = ""
 }
 
-func TestDaemonTimer(t *testing.T) {
-	announceTest("TestDaemonTimer")
-
+func appDaemonTimer(t *testing.T) {
 	*daemonCmd = "sleep 1s && echo testdaemontimerOut1 && sleep 2s && echo testdaemontimerOut2"
 	*daemonTimer = 2 * int(time.Second)
 
