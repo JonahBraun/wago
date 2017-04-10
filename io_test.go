@@ -4,10 +4,6 @@ import "testing"
 import "github.com/stretchr/testify/assert"
 
 type ReadWriter struct {
-	//Reader func(p []byte) (n int, err error)
-	//Writer func(p []byte) (n int, err error)
-	//Closer func() error
-
 	Pipe chan []byte
 }
 
