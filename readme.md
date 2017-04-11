@@ -1,5 +1,3 @@
-*Update 19 Oct 2015*: Wago 1.2.0 beta released, [release notes, download available](https://github.com/JonahBraun/wago/releases).
-
 **Do you routinely?:**
 
 1. Save your code.
