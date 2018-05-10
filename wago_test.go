@@ -1,27 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
-
-type FakeEvent string
-
-func (s FakeEvent) String() string {
-	return string(s)
-}
 
 func NewFakeWatcher() *Watcher {
 	return &Watcher{
-		make(chan fmt.Stringer),
+		make(chan fsnotify.Event),
 		make(chan error),
 	}
 }
 
 func (watcher *Watcher) SendCreate() {
-	watcher.Event <- FakeEvent(`"/tmp/fake.txt": CREATE`)
+	watcher.Event <- fsnotify.Event{`"/tmp/fake.txt": CREATE`, fsnotify.Create}
 }
 
 func TestAppIntegrations(t *testing.T) {
@@ -56,7 +51,7 @@ func appSimple(t *testing.T) {
 			default:
 			}
 
-			watcher.Event <- FakeEvent(`"/tmp/fake.txt": CREATE`)
+			watcher.Event <- fsnotify.Event{`"/tmp/fake.txt": CREATE`, fsnotify.Create}
 			time.Sleep(duration)
 			duration += time.Second
 		}
@@ -87,7 +82,7 @@ func appEventRace(t *testing.T) {
 			default:
 			}
 
-			watcher.Event <- FakeEvent(`"/tmp/fake.txt": CREATE`)
+			watcher.Event <- fsnotify.Event{`"/tmp/fake.txt": CREATE`, fsnotify.Create}
 			time.Sleep(duration)
 			duration += 10
 		}
