@@ -21,11 +21,11 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/JonahBraun/dog"
-	"github.com/howeyc/fsnotify"
+	"github.com/fsnotify/fsnotify"
 )
 
 // VERSION of wago
-const VERSION = "1.2.0"
+const VERSION = "1.3.0"
 
 var (
 	log     = dog.NewDog(dog.DEBUG)
@@ -56,14 +56,11 @@ var (
 
 // Watcher of what string to watch for
 type Watcher struct {
-	Event chan fmt.Stringer
+	Event chan fsnotify.Event
 	Error chan error
 }
 
 func main() {
-	// the following function calls merely serve to logically organize what
-	// is otherwise a VERY lengthy setup
-
 	// TODO: have configSetup return a config object so that the reliance on
 	// config globals is removed
 	configSetup()
@@ -122,9 +119,11 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 
 	// main loop
 	for {
-		// kill is passed to all Runnable so they know when they should exit
+		// Kill will passed to all Runnable to permit exiting on events.
 		kill := make(chan struct{})
 
+		// Events will cause the action chain to restart.
+		// Because we haven't started it yet, drain extra events.
 		var drain func()
 		drain = func() {
 			select {
@@ -178,13 +177,13 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			}
 		}
 
-		// ensure an event has occured, we may be here because all runnables completed
+		// Ensure an event has occured, we may be here because all runnables completed.
 		<-kill
 
-		// ensure all runnables (procs) are dead before restarting the chain
+		// Ensure all runnables (procs) are dead before restarting the chain.
 		wg.Wait()
 
-		// check if we should quit
+		// Check if we should quit.
 		select {
 		case <-quit:
 			log.Debug("Quitting main event/action loop")
@@ -205,7 +204,7 @@ func newWatcher() *Watcher {
 		log.Fatal("Ignore regex compile error:", err)(1)
 	}
 
-	watchDir := func(path string, info os.FileInfo, err error) error {
+	checkForWatch := func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
 			return nil
 		}
@@ -221,7 +220,7 @@ func newWatcher() *Watcher {
 		}
 
 		log.Debug("Watching dir:", path)
-		err = watcher.Watch(path)
+		err = watcher.Add(path)
 		if err != nil {
 			log.Err("Error watching dir (path, error):", path, err)
 		}
@@ -230,10 +229,10 @@ func newWatcher() *Watcher {
 	}
 
 	if *recursive == true {
-		// errors are handled in watchDir
-		filepath.Walk(*targetDir, watchDir)
+		// errors are handled in checkForWatch
+		filepath.Walk(*targetDir, checkForWatch)
 	} else {
-		err = watcher.Watch(*targetDir)
+		err = watcher.Add(*targetDir)
 		if err != nil {
 			log.Fatal("Error watching dir (path, error):", *targetDir, err)(1)
 		}
@@ -241,16 +240,15 @@ func newWatcher() *Watcher {
 
 	// To facilitate testing (which sends artifical events from a timer),
 	// we have an abstracted struct Watcher that holds the applicable channels.
-	// fsnotify.FileEvent is a fmt.Stringer, but channels cannot be converted.
-	// Unfortunately, an extra channel is necessary to perform the conversion.
-	event := make(chan fmt.Stringer)
+	// Channels cannot be converted, an extra channel is required.
+	event := make(chan fsnotify.Event)
 	go func() {
 		for {
-			event <- <-watcher.Event
+			event <- <-watcher.Events
 		}
 	}()
 
-	return &Watcher{event, watcher.Error}
+	return &Watcher{event, watcher.Errors}
 }
 
 func startWebServer() {
@@ -333,9 +331,6 @@ func configSetup() {
 		log.Fatal("You must specify an action")(1)
 	}
 
-	webBase := flag.String("webbase", "", "Deprecated, use webroot.")
-	webServer := flag.String("web", "", "Deprecated, use http or http2.")
-
 	flag.Parse()
 
 	if *verbose {
@@ -344,15 +339,6 @@ func configSetup() {
 		log = dog.NewDog(dog.WARN)
 	} else {
 		log = dog.NewDog(dog.INFO)
-	}
-
-	if *webBase != "" {
-		log.Warn("-webbase is deprecated, use -webroot")
-		*webRoot = *webBase
-	}
-	if *webServer != "" {
-		log.Warn("-web is deprecated, use -http or -h2")
-		*httpPort = *webServer
 	}
 
 	if len(*shell) == 0 {
@@ -371,7 +357,9 @@ func configSetup() {
 		log.Fatal("Specify a daemon command to use the trigger or timer")(1)
 	}
 
-	if len(*buildCmd) == 0 && len(*daemonCmd) == 0 && !*fiddle && len(*postCmd) == 0 && len(*url) == 0 && len(*webServer) == 0 && len(*httpPort) == 0 && len(*http2Port) == 0 {
+	if len(*buildCmd) == 0 && len(*daemonCmd) == 0 && !*fiddle &&
+		len(*postCmd) == 0 && len(*url) == 0 && len(*httpPort) == 0 &&
+		len(*http2Port) == 0 {
 		flag.Usage()
 		log.Fatal("You must specify an action")(1)
 	}
