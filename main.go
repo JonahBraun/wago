@@ -1,9 +1,10 @@
-// Wago (Watch, Go)
-// A general purpose watch / build development tool.
+/*
+Wago (Watch, Go)
+A general purpose watch / build development tool.
 
-// TODO: catch SIGINT and reset term
-// see https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
-
+TODO: catch SIGINT and reset term
+see https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
+*/
 package main
 
 import (
@@ -34,9 +35,9 @@ var (
 
 	buildCmd      = flag.String("cmd", "", "Run command, wait for it to complete.")
 	daemonCmd     = flag.String("daemon", "", "Run command and leave running in the background.")
-	daemonTimer   = flag.Int("timer", 0, "Wait miliseconds after starting daemon, then continue.")
+	daemonTimer   = flag.Int("timer", 0, "Wait milliseconds after starting daemon, then continue.")
 	daemonTrigger = flag.String("trigger", "", "Wait for daemon to output this string, then continue.")
-	exitWait      = flag.Int("exitwait", 50, "Max miliseconds a process has after a SIGTERM to exit before a SIGKILL.")
+	exitWait      = flag.Int("exitwait", 50, "Max milliseconds a process has after a SIGTERM to exit before a SIGKILL.")
 	fiddle        = flag.Bool("fiddle", false, "CLI fiddle mode! Start a web server, open browser to URL of targetDir/index.html")
 	postCmd       = flag.String("pcmd", "", "Run command after daemon starts. Use this to kick off your test suite.")
 	recursive     = flag.Bool("recursive", true, "Watch directory tree recursively.")
@@ -204,14 +205,18 @@ func newWatcher() *Watcher {
 		log.Fatal("Ignore regex compile error:", err)(1)
 	}
 
-	checkForWatch := func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			return nil
-		}
+	if _, err := os.Stat(*targetDir); err != nil {
+		log.Fatal("Directory does not exist (path, error):", *targetDir, err)(1)
+	}
 
+	checkForWatch := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Err("Error reading dir, skipping:", path, err)
 			return filepath.SkipDir
+		}
+
+		if !info.IsDir() {
+			return nil
 		}
 
 		if ignore.MatchString(path) {
