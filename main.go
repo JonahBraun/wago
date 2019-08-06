@@ -2,8 +2,8 @@
 Wago (Watch, Go)
 A general purpose watch / build development tool.
 
-TODO: catch SIGINT and reset term
-see https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
+TODO: Catch SIGINT and reset terminal. See:
+https://askubuntu.com/questions/171449/shell-does-not-show-typed-in-commands-reset-works-but-what-happened
 */
 package main
 
@@ -26,7 +26,7 @@ import (
 )
 
 // VERSION of wago
-const VERSION = "1.3.0"
+const VERSION = "1.3.1"
 
 var (
 	log     = dog.NewDog(dog.DEBUG)
@@ -50,50 +50,37 @@ var (
 	keyFile       = flag.String("key", "", "X.509 key file for HTTP2/TLS, eg: key.pem")
 	certFile      = flag.String("cert", "", "X.509 cert file for HTTP2/TLS, eg: cert.pem")
 	webRoot       = flag.String("webroot", "", "Local directory to use as root for web server, defaults to -dir.")
-	shell         = flag.String("shell", "", "Shell used to run commands, defaults to $SHELL, fallback to /bin/sh")
+	shell         = flag.String("shell", "", "Shell to interpret commands, defaults to $SHELL, fallback to /bin/sh")
 	subStdin      chan *Cmd
 	unsubStdin    chan *Cmd
 )
 
-// Watcher of what string to watch for
+// Watcher abstracts fsnotify.Watcher to facilitate testing with artifical events.
 type Watcher struct {
 	Event chan fsnotify.Event
 	Error chan error
 }
 
 func main() {
-	// TODO: have configSetup return a config object so that the reliance on
-	// config globals is removed
+	// TODO: Consider moving config variables to a config struct for code readability
+	// and further dependency injection.
 	configSetup()
 
+	// If necessary, start an http or http2 server.
 	startWebServer()
 
+	// Begin managing user input, which will broadcast to subscribed commands.
 	subStdin, unsubStdin = ManageUserInput(os.Stdin)
 
+	// Setup action chain and run main loop.
 	runChain(newWatcher(), catchSignals())
 }
 
-func catchSignals() chan struct{} {
-	// quit needs to inform multiple receivers, sig can't do that
-	quit := make(chan struct{})
-	sig := make(chan os.Signal, 1)
-
-	// TODO add SIGTERM to this (need OS conditional)
-	signal.Notify(sig, os.Interrupt, os.Kill)
-
-	go func() {
-		<-sig
-		close(quit)
-	}()
-
-	return quit
-}
-
-// event loop and action chain happen here
+// runChain creates the action chain and manages the main event loop.
 func runChain(watcher *Watcher, quit chan struct{}) {
 	chain := make([]Runnable, 0, 5)
 
-	// build chain of runnables
+	// Construct a chain of Runnables (user specified actions).
 	if len(*buildCmd) > 0 {
 		chain = append(chain, NewRunWait(*buildCmd))
 	}
@@ -118,9 +105,13 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 
 	var wg sync.WaitGroup
 
-	// main loop
+	// Main loop
 	for {
-		// Kill will passed to all Runnable to permit exiting on events.
+		// Kill signals by closing. This allows it to broadcast to all Runnables and
+		// to the RunLoop below without the need for subscriber management.
+		//
+		// Because it signals by closing, a new channel needs to be created at the start
+		// of each loop.
 		kill := make(chan struct{})
 
 		// Events will cause the action chain to restart.
@@ -136,7 +127,8 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 		}
 		drain()
 
-		// event loop
+		// Launch concurrent file loop. When an event is matched, the kill channel
+		// is closed. This signals to all active Runnables and the RunLoop below.
 		go func() {
 			for {
 				select {
@@ -159,14 +151,19 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 
 	RunLoop:
 		for _, runnable := range chain {
+			// Start the Runnable, which starts and manages a user defined process.
+			// Runnables may be running in parallel (a daemon and test suite).
 			done, dead := runnable(kill)
 			wg.Add(1)
 
 			go func() {
+				// Wait for the Runnable (process) to exit completely.
 				<-dead
 				wg.Done()
 			}()
 
+			// Wait for either an event to be received (<-kill) or for the Runnable to
+			// signal done. If done is successful, the next Runnable in the chain is started.
 			select {
 			case d := <-done:
 				if !d {
@@ -178,7 +175,7 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 			}
 		}
 
-		// Ensure an event has occured, we may be here because all runnables completed.
+		// Ensure an event has occured, we may be here because all runnables signalled done.
 		<-kill
 
 		// Ensure all runnables (procs) are dead before restarting the chain.
@@ -194,7 +191,28 @@ func runChain(watcher *Watcher, quit chan struct{}) {
 	}
 }
 
+// catchSignals catches OS signals and broadcasts by closing the returned channel quit.
+func catchSignals() chan struct{} {
+	// quit needs to inform multiple receivers, sig can't do that
+	quit := make(chan struct{})
+	sig := make(chan os.Signal, 1)
+
+	// TODO add SIGTERM to this (need OS conditional)
+	signal.Notify(sig, os.Interrupt, os.Kill)
+
+	go func() {
+		<-sig
+		close(quit)
+	}()
+
+	return quit
+}
+
+// newWatcher configures a fsnotify watcher for the user specified path. The returned
+// struct contains the two channels corresponding to those from the fsnotify package.
 func newWatcher() *Watcher {
+	// Create the local watcher from fsnotify. See wago_test.go where an artificial
+	// watcher is used instead.
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)
@@ -209,6 +227,7 @@ func newWatcher() *Watcher {
 		log.Fatal("Directory does not exist (path, error):", *targetDir, err)(1)
 	}
 
+	// checkForWatch determines if a folder should be watched or not.
 	checkForWatch := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Err("Error reading dir, skipping:", path, err)
@@ -256,6 +275,7 @@ func newWatcher() *Watcher {
 	return &Watcher{event, watcher.Errors}
 }
 
+// startWebServer starts a local http/2 web server if necessary.
 func startWebServer() {
 	var err error
 
@@ -324,6 +344,7 @@ func startWebServer() {
 	}
 }
 
+// configSetup sets config variables from user params.
 func configSetup() {
 	flag.Usage = func() {
 		fmt.Println("WaGo (Watch, Go) build tool. Version", VERSION)

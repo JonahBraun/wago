@@ -5,6 +5,9 @@ import (
 	"os/exec"
 )
 
+// Tell Chrome to open the URL if not already open. If already open, refresh.
+// This was copied from StackOverflow (or similar), unfortunately source link
+// was not saved at the time.
 var chromeApplescript = `
   tell application "Google Chrome"
     activate

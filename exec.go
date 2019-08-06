@@ -353,7 +353,8 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 				}
 				return
 			default:
-				// If there is no match, fallthrough and check the next byte.
+				// If there is no match, fallthrough and check the next byte. This paradigm
+				// is necessary as len(chan) only works when chan is buffered.
 			}
 
 			n, err := in.Read(b)
@@ -406,26 +407,29 @@ func (cmd *Cmd) RunDaemonTrigger(kill chan struct{}, trigger string) {
 	case <-match:
 		log.Debug("Daemon trigger matched")
 		cmd.done <- true
-		// still need to wait for proc to exit/kill
+
+		// Trigger is matched and we have signaled done, but we still need to wait for
+		// an exit/kill. This nested select duplicates the two cases of the parent select.
 		select {
 		case err := <-proc:
 			if err != nil {
 				log.Err("Daemon error:", err)
 				cmd.done <- false
 			} else {
-				// A daemon probably shouldn't be exiting
+				// A daemon probably shouldn't be exiting, warn the user.
 				log.Warn("Daemon exited cleanly")
 				cmd.done <- true
 			}
 		case <-kill:
 			cmd.kill(proc)
 		}
+
 	case err := <-proc:
 		if err != nil {
 			log.Err("Daemon error:", err)
 			cmd.done <- false
 		} else {
-			// A daemon probably shouldn't be exiting
+			// A daemon probably shouldn't be exiting, warn the user.
 			log.Warn("Daemon exited cleanly")
 			cmd.done <- true
 		}
