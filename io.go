@@ -1,8 +1,27 @@
 package main
 
-import "io"
+import (
+	"io"
+	"sync"
+)
 
-// ManageUserInput passes bytes from user input to all actively running commands.
+// copyPipe continually copies output from a process to standard output.
+//
+// Originally standard i/o was assigned to exec.Cmd i/o (cmd.Stdout = os.Stdout)
+// however this simply approach did not work for child processes in a process group.
+func copyPipe(in io.Reader, out io.Writer, wg *sync.WaitGroup) {
+	wg.Add(1)
+
+	go func() {
+		_, err := io.Copy(out, in)
+		if err != nil {
+			log.Err("I/O pipe has errored:", err)
+		}
+		wg.Done()
+	}()
+}
+
+// ManageUserInput passes bytes from user input to all subscribed commands.
 // Input is always os.Stdin
 func ManageUserInput(input io.Reader) (sub chan *Cmd, unsub chan *Cmd) {
 	termIn := make(chan []byte)
