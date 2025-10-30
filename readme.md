@@ -1,3 +1,5 @@
+⚠️ Wago is no longer maintained. I recommend using [entr](https://github.com/eradman/entr) instead.
+
 **Do you routinely?:**
 
 1. Save your code.
